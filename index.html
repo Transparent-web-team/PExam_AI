@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đăng nhập — Hệ thống Thi Trực tuyến PTIT</title>
+  <meta name="description"
+    content="Hệ thống thi trắc nghiệm trực tuyến của Học viện Công nghệ Bưu chính Viễn thông PTIT">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .auth-bg-circle:nth-child(1) {
+      width: 500px;
+      height: 500px;
+      top: -100px;
+      left: -150px
+    }
+
+    .auth-bg-circle:nth-child(2) {
+      width: 300px;
+      height: 300px;
+      bottom: 40px;
+      right: -60px;
+      background: rgba(255, 255, 255, .04)
+    }
+
+    .auth-bg-circle:nth-child(3) {
+      width: 180px;
+      height: 180px;
+      top: 30%;
+      right: 15%;
+      background: rgba(192, 39, 45, .08)
+    }
+
+    .floating-particles {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none
+    }
+
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      animation: float linear infinite;
+      opacity: .15
+    }
+
+    @keyframes float {
+      0% {
+        transform: translateY(100vh) rotate(0);
+        opacity: 0
+      }
+
+      10% {
+        opacity: .15
+      }
+
+      90% {
+        opacity: .15
+      }
+
+      100% {
+        transform: translateY(-100px) rotate(360deg);
+        opacity: 0
+      }
+    }
+
+    .auth-card {
+      animation: cardIn .4s ease
+    }
+
+    @keyframes cardIn {
+      from {
+        transform: translateY(16px);
+        opacity: 0
+      }
+
+      to {
+        transform: none;
+        opacity: 1
+      }
+    }
+
+    .divider-or {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-light);
+      font-size: 12px;
+      margin: 12px 0
+    }
+
+    .divider-or::before,
+    .divider-or::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border)
+    }
+
+    .promise-list {
+      list-style: none;
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap
+    }
+
+    .promise-list li {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: rgba(255, 255, 255, .75)
+    }
+
+    .auth-header-logo {
+      width: 52px;
+      height: 52px;
+      background: rgba(255, 255, 255, .2);
+      border-radius: 50%;
+      border: 3px solid rgba(255, 255, 255, .4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: #fff;
+      margin: 0 auto 10px
+    }
+
+    .auth-header {
+      padding: 20px 24px !important
+    }
+
+    .school-name {
+      font-size: 11px;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      opacity: .8;
+      margin-top: 2px
+    }
+
+    .auth-body {
+      padding: 20px 24px !important
+    }
+
+    .form-group {
+      margin-bottom: 12px !important
+    }
+  </style>
+</head>
+
+<body>
+  <div class="auth-page" id="authPage">
+    <div class="auth-bg-circle"></div>
+    <div class="auth-bg-circle"></div>
+    <div class="auth-bg-circle"></div>
+    <div class="floating-particles" id="particles"></div>
+
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="auth-header-logo"><i class="fas fa-graduation-cap"></i></div>
+        <h1>Hệ thống Thi Trực tuyến</h1>
+        <p class="school-name">Học viện Công nghệ Bưu chính Viễn thông — PTIT</p>
+      </div>
+
+      <div class="auth-body">
+        <div class="auth-tabs">
+          <div class="auth-tab active" data-tab="login">Đăng nhập</div>
+          <div class="auth-tab" data-tab="register">Đăng ký</div>
+        </div>
+
+        <!-- LOGIN FORM -->
+        <div class="auth-form active" id="loginForm">
+          <div id="loginAlert"></div>
+          <div class="form-group">
+            <label class="form-label">Tên đăng nhập</label>
+            <div class="input-group">
+              <i class="fas fa-user input-icon"></i>
+              <input id="loginUsername" class="form-control" type="text" placeholder="Nhập tên đăng nhập"
+                autocomplete="username">
+            </div>
+            <span class="form-error" id="loginUsernameErr"></span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mật khẩu</label>
+            <div class="input-group">
+              <i class="fas fa-lock input-icon"></i>
+              <input id="loginPassword" class="form-control" type="password" placeholder="Nhập mật khẩu"
+                autocomplete="current-password">
+              <i class="fas fa-eye input-toggle" id="loginToggle"></i>
+            </div>
+            <span class="form-error" id="loginPasswordErr"></span>
+          </div>
+          <div class="flex justify-between items-center mb-3" style="margin-bottom:20px">
+            <label
+              style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text-muted)">
+              <input type="checkbox" id="rememberMe"> Ghi nhớ đăng nhập
+            </label>
+            <a href="#" style="font-size:13px;color:var(--ptit-red);font-weight:600">Quên mật khẩu?</a>
+          </div>
+          <button class="btn btn-primary w-100 btn-lg" id="loginBtn">
+            <i class="fas fa-sign-in-alt"></i> Đăng nhập
+          </button>
+          <div class="divider-or">hoặc</div>
+          <a href="admin/login.html" class="btn btn-dark w-100" style="justify-content:center">
+            <i class="fas fa-user-shield"></i> Đăng nhập với tư cách Quản trị viên
+          </a>
+          <div class="auth-footer">
+            <p>Chưa có tài khoản? <a href="#" style="color:var(--ptit-red);font-weight:600"
+                onclick="switchTab('register')">Đăng ký ngay</a></p>
+          </div>
+          <div class="auth-footer mt-3"
+            style="background:var(--surface2);border-radius:var(--radius);padding:10px;margin-top:12px">
+            <p style="font-size:11px"><i class="fas fa-info-circle" style="color:var(--info)"></i>
+              <strong>Demo:</strong> sinhvien01 / 123456 &nbsp;|&nbsp; admin / admin123</p>
+          </div>
+        </div>
+
+        <!-- REGISTER FORM -->
+        <div class="auth-form" id="registerForm">
+          <div id="registerAlert"></div>
+          <div class="form-group">
+            <label class="form-label">Họ và tên <span style="color:var(--danger)">*</span></label>
+            <div class="input-group">
+              <i class="fas fa-id-card input-icon"></i>
+              <input id="regName" class="form-control" type="text" placeholder="Nguyễn Văn A">
+            </div>
+            <span class="form-error" id="regNameErr"></span>
+          </div>
+          <div class="grid-2" style="gap:14px">
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Tên đăng nhập <span style="color:var(--danger)">*</span></label>
+              <div class="input-group">
+                <i class="fas fa-user input-icon"></i>
+                <input id="regUsername" class="form-control" type="text" placeholder="vd: sinhvien01">
+              </div>
+              <span class="form-error" id="regUsernameErr"></span>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Email <span style="color:var(--danger)">*</span></label>
+              <div class="input-group">
+                <i class="fas fa-envelope input-icon"></i>
+                <input id="regEmail" class="form-control" type="email" placeholder="email@ptit.edu.vn">
+              </div>
+              <span class="form-error" id="regEmailErr"></span>
+            </div>
+          </div>
+          <div class="grid-2 mt-3" style="gap:14px;margin-top:14px">
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Mật khẩu <span style="color:var(--danger)">*</span></label>
+              <div class="input-group">
+                <i class="fas fa-lock input-icon"></i>
+                <input id="regPassword" class="form-control" type="password" placeholder="≥ 6 ký tự">
+                <i class="fas fa-eye input-toggle" id="regToggle1"></i>
+              </div>
+              <span class="form-error" id="regPasswordErr"></span>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Xác nhận mật khẩu <span style="color:var(--danger)">*</span></label>
+              <div class="input-group">
+                <i class="fas fa-lock input-icon"></i>
+                <input id="regConfirm" class="form-control" type="password" placeholder="Nhập lại">
+                <i class="fas fa-eye input-toggle" id="regToggle2"></i>
+              </div>
+              <span class="form-error" id="regConfirmErr"></span>
+            </div>
+          </div>
+          <button class="btn btn-primary w-100 btn-lg mt-4" id="registerBtn" style="margin-top:20px">
+            <i class="fas fa-user-plus"></i> Tạo tài khoản
+          </button>
+          <div class="auth-footer mt-3">
+            <p>Đã có tài khoản? <a href="#" style="color:var(--ptit-red);font-weight:600"
+                onclick="switchTab('login')">Đăng nhập</a></p>
+          </div>
+        </div>
+      </div>
+
+      <ul class="promise-list"
+        style="background:linear-gradient(135deg,var(--ptit-dark),var(--ptit-navy));padding:14px 20px;margin:0">
+        <li><i class="fas fa-shield-alt"></i> Bảo mật cao</li>
+        <li><i class="fas fa-clock"></i> Truy cập 24/7</li>
+        <li><i class="fas fa-mobile-alt"></i> Đa thiết bị</li>
+      </ul>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script>
+    // Redirect if already logged in
+    (function () {
+      const s = Auth.getSession();
+      if (s) { window.location.href = s.role === 'admin' ? 'admin/dashboard.html' : 'user/dashboard.html'; }
+    })();
+
+    // Floating particles
+    (function () {
+      const container = document.getElementById('particles');
+      const colors = ['#C0272D', '#fff', '#e05c60', '#1a1a2e'];
+      for (let i = 0; i < 18; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        const size = Utils.randomInt(6, 20);
+        p.style.cssText = `width:${size}px;height:${size}px;left:${Utils.randomInt(0, 100)}%;background:${colors[i % colors.length]};animation-duration:${Utils.randomInt(8, 18)}s;animation-delay:${Utils.randomInt(0, 8)}s`;
+        container.appendChild(p);
+      }
+    })();
+
+    // Tab switching
+    function switchTab(tab) {
+      document.querySelectorAll('.auth-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+      document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+      document.getElementById(tab + 'Form').classList.add('active');
+    }
+    document.querySelectorAll('.auth-tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+
+    // Password toggles
+    function pwToggle(inputId, iconId) {
+      const inp = document.getElementById(inputId);
+      const ico = document.getElementById(iconId);
+      if (!inp || !ico) return;
+      ico.addEventListener('click', () => {
+        inp.type = inp.type === 'password' ? 'text' : 'password';
+        ico.classList.toggle('fa-eye'); ico.classList.toggle('fa-eye-slash');
+      });
+    }
+    pwToggle('loginPassword', 'loginToggle');
+    pwToggle('regPassword', 'regToggle1');
+    pwToggle('regConfirm', 'regToggle2');
+
+    // Helper functions
+    function showError(inputId, errId, msg) {
+      const inp = document.getElementById(inputId);
+      const err = document.getElementById(errId);
+      if (inp) inp.classList.add('error');
+      if (err) { err.textContent = msg; err.classList.add('show'); }
+    }
+    function clearErrors(ids) {
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.classList.remove('error', 'show'); el.textContent = ''; }
+        const inpId = id.replace('Err', '');
+        const inp = document.getElementById(inpId);
+        if (inp) inp.classList.remove('error');
+      });
+    }
+    function showAlert(containerId, msg, type = 'danger') {
+      const icons = { danger: 'fa-times-circle', success: 'fa-check-circle', warning: 'fa-exclamation-triangle' };
+      document.getElementById(containerId).innerHTML = `<div class="alert alert-${type}"><i class="fas ${icons[type]}"></i> ${msg}</div>`;
+    }
+    function clearAlert(id) { document.getElementById(id).innerHTML = ''; }
+
+    // LOGIN
+    document.getElementById('loginBtn').addEventListener('click', () => {
+      clearErrors(['loginUsernameErr', 'loginPasswordErr']); clearAlert('loginAlert');
+      const u = document.getElementById('loginUsername').value.trim();
+      const p = document.getElementById('loginPassword').value;
+      let valid = true;
+      if (!u) { showError('loginUsername', 'loginUsernameErr', 'Vui lòng nhập tên đăng nhập.'); valid = false; }
+      if (!p) { showError('loginPassword', 'loginPasswordErr', 'Vui lòng nhập mật khẩu.'); valid = false; }
+      if (!valid) return;
+      const btn = document.getElementById('loginBtn');
+      btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang đăng nhập...';
+      setTimeout(() => {
+        const res = Auth.login(u, p);
+        if (res.success) {
+          showAlert('loginAlert', 'Đăng nhập thành công! Đang chuyển trang...', 'success');
+          setTimeout(() => { window.location.href = res.user.role === 'admin' ? 'admin/dashboard.html' : 'user/dashboard.html'; }, 800);
+        } else {
+          showAlert('loginAlert', res.error);
+          btn.disabled = false; btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Đăng nhập';
+        }
+      }, 600);
+    });
+    document.getElementById('loginPassword').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('loginBtn').click(); });
+
+    // REGISTER
+    document.getElementById('registerBtn').addEventListener('click', () => {
+      clearErrors(['regNameErr', 'regUsernameErr', 'regEmailErr', 'regPasswordErr', 'regConfirmErr']); clearAlert('registerAlert');
+      const name = document.getElementById('regName').value.trim();
+      const u = document.getElementById('regUsername').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const pw = document.getElementById('regPassword').value;
+      const cpw = document.getElementById('regConfirm').value;
+
+      const res = Auth.register(u, email, pw, cpw, name);
+
+      if (!name || name.length < 2) { showError('regName', 'regNameErr', 'Vui lòng nhập họ và tên (ít nhất 2 ký tự).'); }
+      if (!u || u.length < 4) { showError('regUsername', 'regUsernameErr', 'Tên đăng nhập phải ít nhất 4 ký tự.'); }
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showError('regEmail', 'regEmailErr', 'Email không hợp lệ.'); }
+      if (!pw || pw.length < 6) { showError('regPassword', 'regPasswordErr', 'Mật khẩu phải ít nhất 6 ký tự.'); }
+      if (pw !== cpw) { showError('regConfirm', 'regConfirmErr', 'Mật khẩu xác nhận không khớp.'); }
+
+      if (!res.success) { showAlert('registerAlert', res.error); return; }
+
+      const btn = document.getElementById('registerBtn');
+      btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang tạo tài khoản...';
+      setTimeout(() => {
+        showAlert('registerAlert', 'Tạo tài khoản thành công! Đang chuyển trang...', 'success');
+        setTimeout(() => { window.location.href = 'user/dashboard.html'; }, 1000);
+      }, 700);
+    });
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trang Chủ — Hệ thống Thi PTIT</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        .welcome-banner {
+            background: linear-gradient(135deg, var(--ptit-dark) 0%, var(--ptit-navy) 50%, var(--ptit-blue) 100%);
+            border-radius: var(--radius-lg);
+            padding: 30px 32px;
+            color: #fff;
+            margin-bottom: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            position: relative;
+            overflow: hidden
+        }
+
+        .welcome-banner::before {
+            content: '';
+            position: absolute;
+            right: -40px;
+            top: -40px;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: rgba(192, 39, 45, .15)
+        }
+
+        .welcome-banner::after {
+            content: '';
+            position: absolute;
+            right: 80px;
+            bottom: -60px;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .04)
+        }
+
+        .welcome-text h2 {
+            font-size: 1.5rem;
+            color: #fff;
+            margin-bottom: 6px
+        }
+
+        .welcome-text p {
+            color: rgba(255, 255, 255, .75);
+            font-size: 14px
+        }
+
+        .welcome-stats {
+            display: flex;
+            gap: 24px;
+            flex-shrink: 0
+        }
+
+        .w-stat {
+            text-align: center
+        }
+
+        .w-stat-value {
+            font-size: 26px;
+            font-weight: 800;
+            color: #fff
+        }
+
+        .w-stat-label {
+            font-size: 11px;
+            color: rgba(255, 255, 255, .65);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: .4px
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px
+        }
+
+        .section-title span {
+            width: 4px;
+            height: 20px;
+            background: var(--ptit-red);
+            border-radius: 99px;
+            display: inline-block
+        }
+
+        .exam-card-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-bottom: 4px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden
+        }
+
+        .score-mini {
+            font-size: 13px;
+            font-weight: 700
+        }
+
+        .score-mini.pass {
+            color: var(--success)
+        }
+
+        .score-mini.fail {
+            color: var(--danger)
+        }
+
+        .exam-card-locked-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, .7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            border-radius: var(--radius-lg)
+        }
+
+        .exam-card {
+            position: relative
+        }
+    </style>
+</head>
+
+<body>
+    <!-- TOPBAR -->
+    <div class="topbar">
+        <button class="sidebar-toggle" style="display:none"><i class="fas fa-bars"></i></button>
+        <a class="topbar-logo" href="dashboard.html" style="text-decoration:none">
+            <div
+                style="width:40px;height:40px;background:var(--ptit-red);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px;flex-shrink:0">
+                P</div>
+            <div>
+                <div class="logo-text">PExam PTIT</div>
+                <div class="logo-sub">Hệ thống thi trực tuyến</div>
+            </div>
+        </a>
+        <div class="topbar-spacer"></div>
+
+        <!-- Search in topbar (mobile) -->
+        <div style="max-width:280px;flex:1" class="search-input-wrap" id="topbarSearch">
+            <i class="fas fa-search search-icon"></i>
+            <input id="topbarSearchInput" type="text" class="form-control" placeholder="Tìm kỳ thi..."
+                style="height:38px;padding-top:8px;padding-bottom:8px">
+        </div>
+
+        <div class="topbar-actions">
+            <div class="dropdown">
+                <div class="topbar-user">
+                    <div class="topbar-avatar" id="userAvatar">?</div>
+                    <div class="d-none d-sm-block">
+                        <div class="topbar-username" id="userName">---</div>
+                        <div class="topbar-role">Sinh viên</div>
+                    </div>
+                    <i class="fas fa-chevron-down fs-12" style="color:var(--text-muted)"></i>
+                </div>
+                <div class="dropdown-menu topbar-dropdown">
+                    <div class="dropdown-item"><i class="fas fa-user"></i> Hồ sơ cá nhân</div>
+                    <div class="dropdown-item"><i class="fas fa-history"></i> Lịch sử thi</div>
+                    <div class="dropdown-divider"></div>
+                    <div class="dropdown-item danger" data-logout><i class="fas fa-sign-out-alt"></i> Đăng xuất</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="user-layout">
+        <div class="user-main">
+
+            <!-- Welcome Banner -->
+            <div class="welcome-banner" id="welcomeBanner">
+                <div class="welcome-text">
+                    <h2>Chào mừng, <span id="welcomeName">Sinh viên</span>! 👋</h2>
+                    <p>Chúc bạn học tập và thi cử tốt lành. Hãy luyện tập thường xuyên để nâng cao kết quả.</p>
+                </div>
+                <div class="welcome-stats" id="welcomeStats">
+                    <div class="w-stat">
+                        <div class="w-stat-value" id="statCompleted">0</div>
+                        <div class="w-stat-label">Đã thi</div>
+                    </div>
+                    <div class="w-stat">
+                        <div class="w-stat-value" id="statAvg">—</div>
+                        <div class="w-stat-label">Điểm TB</div>
+                    </div>
+                    <div class="w-stat">
+                        <div class="w-stat-value" id="statOpen">0</div>
+                        <div class="w-stat-label">Đang mở</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Bar -->
+            <div class="filter-bar">
+                <div class="search-input-wrap">
+                    <i class="fas fa-search search-icon"></i>
+                    <input id="searchInput" type="text" class="form-control"
+                        placeholder="Tìm kiếm kỳ thi theo tên, môn học...">
+                </div>
+                <div class="filter-chips">
+                    <div class="chip active" data-filter="all">Tất cả</div>
+                    <div class="chip" data-filter="open">Đang mở</div>
+                    <div class="chip" data-filter="scheduled">Theo lịch</div>
+                    <div class="chip" data-filter="practice">Luyện tập</div>
+                    <div class="chip" data-filter="midterm">Giữa kỳ</div>
+                    <div class="chip" data-filter="final">Cuối kỳ</div>
+                    <div class="chip" data-filter="completed-by-me">Đã làm</div>
+                </div>
+            </div>
+
+            <!-- Exam Grid -->
+            <div class="section-title"><span></span> Danh sách kỳ thi</div>
+            <div class="exam-grid" id="examGrid">
+                <!-- filled by JS -->
+            </div>
+            <div class="empty-state d-none" id="emptyState">
+                <i class="fas fa-search"></i>
+                <h3>Không tìm thấy kỳ thi</h3>
+                <p>Hãy thử thay đổi từ khoá tìm kiếm hoặc bộ lọc.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/data.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        const session = Auth.requireAuth('student');
+        if (!session) throw new Error('Not authenticated');
+
+        // Init topbar
+        document.getElementById('userAvatar').textContent = session.avatar || session.name[0];
+        document.getElementById('userName').textContent = session.name;
+        document.getElementById('welcomeName').textContent = session.name.split(' ').pop();
+
+        // Dropdown
+        document.querySelector('.topbar-user').addEventListener('click', e => {
+            e.stopPropagation();
+            document.querySelector('.topbar-user').closest('.dropdown').classList.toggle('open');
+        });
+        document.addEventListener('click', () => document.querySelector('.dropdown').classList.remove('open'));
+        document.querySelector('[data-logout]').addEventListener('click', () => { Auth.logout(); window.location.href = '../index.html'; });
+
+        // Load student stats
+        const myResults = DB.getResultsByUser(session.userId);
+        const openExams = DB.exams.filter(e => e.status === 'open').length;
+        document.getElementById('statCompleted').textContent = myResults.length;
+        document.getElementById('statOpen').textContent = openExams;
+        if (myResults.length > 0) {
+            const avg = myResults.reduce((a, r) => a + r.score, 0) / myResults.length;
+            document.getElementById('statAvg').textContent = avg.toFixed(1);
+        }
+
+        // Render exams
+        let currentFilter = 'all';
+        let searchQuery = '';
+
+        function renderExams() {
+            let exams = [...DB.exams];
+
+            // Filter
+            if (currentFilter === 'all') { }
+            else if (currentFilter === 'completed-by-me') {
+                const doneIds = myResults.map(r => r.examId);
+                exams = exams.filter(e => doneIds.includes(e.id));
+            } else if (['open', 'scheduled'].includes(currentFilter)) {
+                exams = exams.filter(e => e.status === currentFilter);
+            } else {
+                exams = exams.filter(e => e.type === currentFilter);
+            }
+
+            // Search
+            if (searchQuery) {
+                const q = searchQuery.toLowerCase();
+                exams = exams.filter(e => e.title.toLowerCase().includes(q) || e.subject.toLowerCase().includes(q) || e.description.toLowerCase().includes(q));
+            }
+
+            const grid = document.getElementById('examGrid');
+            const empty = document.getElementById('emptyState');
+
+            if (exams.length === 0) { grid.innerHTML = ''; empty.classList.remove('d-none'); return; }
+            empty.classList.add('d-none');
+
+            const myResult = (examId) => myResults.find(r => r.examId === examId);
+
+            grid.innerHTML = exams.map(exam => {
+                const result = myResult(exam.id);
+                const isLocked = exam.status === 'scheduled' && !result;
+                const isDone = !!result;
+                const cls = isLocked ? 'locked' : isDone ? 'completed' : '';
+                const typeBadge = Utils.typeBadge(exam.type);
+                const statusBadge = Utils.statusBadge(exam.status);
+
+                let actionBtn = '';
+                if (isLocked) {
+                    actionBtn = `<span style="font-size:12px;color:var(--text-muted)"><i class="fas fa-lock"></i> ${exam.startTime ? Utils.formatDateTime(exam.startTime) : 'Chưa mở'}</span>`;
+                } else if (isDone) {
+                    const retakeBtn = exam.allowRetake !== false
+                        ? `<a href="exam.html?examId=${exam.id}" class="btn btn-outline btn-sm"><i class="fas fa-redo"></i> Thi lại</a>`
+                        : `<span style="font-size:12px;color:var(--text-muted)"><i class="fas fa-ban"></i> Không cho thi lại</span>`;
+                    actionBtn = `<a href="results.html?examId=${exam.id}&userId=${session.userId}" class="btn btn-ghost btn-sm"><i class="fas fa-eye"></i> Xem kết quả</a>
+        ${retakeBtn}`;
+                } else {
+                    actionBtn = `<a href="exam.html?examId=${exam.id}" class="btn btn-primary btn-sm"><i class="fas fa-play"></i> Bắt đầu thi</a>`;
+                }
+
+                const scoreChip = result ? `<span class="score-mini ${result.score >= exam.passingScore ? 'pass' : 'fail'}"><i class="fas fa-star"></i> ${result.score.toFixed(2)}</span>` : '';
+
+                return `<div class="exam-card ${cls}">
+      <div class="exam-card-top"></div>
+      <div class="exam-card-body">
+        <div class="flex justify-between items-center mb-3" style="margin-bottom:10px">
+          <span class="badge ${typeBadge}">${Utils.typeLabel(exam.type)}</span>
+          <div class="flex gap-2 items-center">
+            ${scoreChip}
+            <span class="badge ${statusBadge}">${Utils.statusLabel(exam.status)}</span>
+          </div>
+        </div>
+        <div class="exam-card-title">${exam.title}</div>
+        <div class="exam-card-desc">${exam.description}</div>
+        <div class="exam-card-meta">
+          <span><i class="fas fa-question-circle"></i> ${exam.questionCount} câu hỏi</span>
+          <span><i class="fas fa-clock"></i> ${Utils.formatDuration(exam.duration)}</span>
+          <span><i class="fas fa-users"></i> ${exam.attempts} lượt thi</span>
+          <span><i class="fas fa-book"></i> ${exam.subject}</span>
+        </div>
+      </div>
+      <div class="exam-card-footer">${actionBtn}</div>
+    </div>`;
+            }).join('');
+        }
+
+        // Events
+        document.querySelectorAll('.chip').forEach(c => {
+            c.addEventListener('click', () => {
+                document.querySelectorAll('.chip').forEach(x => x.classList.remove('active'));
+                c.classList.add('active');
+                currentFilter = c.dataset.filter;
+                renderExams();
+            });
+        });
+
+        let searchTimer;
+        ['searchInput', 'topbarSearchInput'].forEach(id => {
+            document.getElementById(id)?.addEventListener('input', e => {
+                clearTimeout(searchTimer);
+                searchTimer = setTimeout(() => { searchQuery = e.target.value.trim(); renderExams(); }, 250);
+            });
+        });
+
+        renderExams();
+    </script>
+</body>
+
+</html>

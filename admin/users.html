@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Người dùng — Admin PTIT</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        .user-avatar-cell {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--ptit-red), #e05c60);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 700;
+            font-size: 14px;
+            flex-shrink: 0
+        }
+
+        .role-admin {
+            background: var(--ptit-red-soft);
+            color: var(--ptit-red);
+            padding: 3px 10px;
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 700
+        }
+
+        .role-student {
+            background: var(--info-soft);
+            color: var(--info);
+            padding: 3px 10px;
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 700
+        }
+    </style>
+</head>
+
+<body>
+    <!-- TOPBAR -->
+    <div class="topbar">
+        <button class="sidebar-toggle" id="sidebarToggle"><i class="fas fa-bars"></i></button>
+        <a class="topbar-logo" href="dashboard.html" style="text-decoration:none">
+            <div
+                style="width:40px;height:40px;background:var(--ptit-red);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px">
+                P</div>
+            <div>
+                <div class="logo-text">PExam PTIT</div>
+                <div class="logo-sub">Quản lý người dùng</div>
+            </div>
+        </a>
+        <div class="topbar-spacer"></div>
+        <div class="topbar-actions">
+            <div class="topbar-avatar" id="userAvatar">AD</div>
+            <button class="btn btn-ghost btn-sm" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Đăng xuất</button>
+        </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+        <nav class="sidebar-nav">
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Tổng quan</div>
+                <a class="sidebar-link" href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Quản lý</div>
+                <a class="sidebar-link" href="exam-editor.html"><i class="fas fa-file-alt"></i> Quản lý kỳ thi</a>
+                <a class="sidebar-link active" href="users.html"><i class="fas fa-users"></i> Quản lý người dùng</a>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Báo cáo</div>
+                <a class="sidebar-link" href="statistics.html"><i class="fas fa-chart-bar"></i> Thống kê</a>
+                <a class="sidebar-link" href="student-results.html"><i class="fas fa-table"></i> Kết quả SV</a>
+            </div>
+        </nav>
+    </div>
+
+    <!-- MAIN -->
+    <div class="admin-layout">
+        <main class="admin-main">
+            <div class="page-header-row page-header">
+                <div>
+                    <h2><i class="fas fa-users" style="color:var(--ptit-red)"></i> Quản lý Người dùng</h2>
+                    <p>Thêm mới, chỉnh sửa và xoá tài khoản sinh viên</p>
+                </div>
+                <button class="btn btn-primary" id="addUserBtn"><i class="fas fa-user-plus"></i> Thêm sinh viên</button>
+            </div>
+
+            <!-- KPI -->
+            <div class="kpi-grid" style="margin-bottom:24px">
+                <div class="kpi-card">
+                    <div class="kpi-icon blue"><i class="fas fa-users"></i></div>
+                    <div class="kpi-info">
+                        <div class="kpi-value" id="kpiTotal">0</div>
+                        <div class="kpi-label">Tổng sinh viên</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon green"><i class="fas fa-check-circle"></i></div>
+                    <div class="kpi-info">
+                        <div class="kpi-value" id="kpiActive">0</div>
+                        <div class="kpi-label">Đã từng thi</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon orange"><i class="fas fa-star"></i></div>
+                    <div class="kpi-info">
+                        <div class="kpi-value" id="kpiAvgScore">—</div>
+                        <div class="kpi-label">Điểm TB toàn system</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon red"><i class="fas fa-user-shield"></i></div>
+                    <div class="kpi-info">
+                        <div class="kpi-value" id="kpiAdmins">0</div>
+                        <div class="kpi-label">Quản trị viên</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter -->
+            <div class="filter-bar" style="margin-bottom:16px">
+                <div class="search-input-wrap">
+                    <i class="fas fa-search search-icon"></i>
+                    <input id="userSearch" type="text" class="form-control"
+                        placeholder="Tìm theo tên, username, mã SV, lớp...">
+                </div>
+                <select class="form-control" id="roleFilter" style="width:150px">
+                    <option value="">Tất cả vai trò</option>
+                    <option value="student">Sinh viên</option>
+                    <option value="admin">Quản trị viên</option>
+                </select>
+                <select class="form-control" id="classFilter" style="width:180px">
+                    <option value="">Tất cả lớp</option>
+                </select>
+            </div>
+
+            <!-- Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h4><i class="fas fa-list"></i> Danh sách tài khoản (<span id="userCount">0</span>)</h4>
+                    <div class="flex gap-2">
+                        <button class="btn btn-ghost btn-sm" onclick="exportCSV()"><i class="fas fa-download"></i> Xuất
+                            CSV</button>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table class="table" id="userTable">
+                        <thead>
+                            <tr>
+                                <th>Người dùng</th>
+                                <th>Username</th>
+                                <th>Mã SV</th>
+                                <th>Email</th>
+                                <th>Lớp</th>
+                                <th>Vai trò</th>
+                                <th>Kết quả</th>
+                                <th style="text-align:right">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userTableBody"></tbody>
+                    </table>
+                </div>
+                <!-- Pagination -->
+                <div id="paginationBar"
+                    style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-top:1px solid var(--border);background:var(--surface2)">
+                    <div style="font-size:13px;color:var(--text-muted)" id="pageInfo">Hiển thị 0 / 0</div>
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <button class="btn btn-ghost btn-sm" id="prevPageBtn" onclick="changePage(-1)"><i
+                                class="fas fa-chevron-left"></i></button>
+                        <div id="pageNumbers" style="display:flex;gap:4px"></div>
+                        <button class="btn btn-ghost btn-sm" id="nextPageBtn" onclick="changePage(1)"><i
+                                class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <select class="form-control" id="pageSizeSelect" style="width:100px;height:32px;font-size:12px"
+                        onchange="pageSize=+this.value;currentPage=1;renderTable()">
+                        <option value="5">5 / trang</option>
+                        <option value="10" selected>10 / trang</option>
+                        <option value="20">20 / trang</option>
+                        <option value="999">Tất cả</option>
+                    </select>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ADD / EDIT MODAL -->
+    <div class="modal-overlay" id="userModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle"><i class="fas fa-user-plus" style="color:var(--ptit-red)"></i> Thêm sinh viên</h3>
+                <button class="modal-close" onclick="closeUserModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div id="modalAlert"></div>
+                <div class="grid-2" style="gap:16px">
+                    <div class="form-group">
+                        <label class="form-label">Họ và tên <span style="color:var(--danger)">*</span></label>
+                        <input id="uName" class="form-control" type="text" placeholder="Nguyễn Văn A">
+                        <span class="form-error" id="uNameErr"></span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tên đăng nhập <span style="color:var(--danger)">*</span></label>
+                        <input id="uUsername" class="form-control" type="text" placeholder="sinhvien09">
+                        <span class="form-error" id="uUsernameErr"></span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email <span style="color:var(--danger)">*</span></label>
+                        <input id="uEmail" class="form-control" type="email" placeholder="email@ptit.edu.vn">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Mã sinh viên</label>
+                        <input id="uStudentId" class="form-control" type="text" placeholder="B21DCCN009">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Lớp</label>
+                        <input id="uClass" class="form-control" type="text" placeholder="D21CQCN01-B">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Mật khẩu <span id="pwRequired"
+                                style="color:var(--danger)">*</span></label>
+                        <input id="uPassword" class="form-control" type="password" placeholder="Tối thiểu 6 ký tự">
+                        <span class="form-error" id="uPasswordErr"></span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Vai trò</label>
+                        <select id="uRole" class="form-control">
+                            <option value="student">Sinh viên</option>
+                            <option value="admin">Quản trị viên</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeUserModal()">Huỷ</button>
+                <button class="btn btn-primary" id="saveUserBtn"><i class="fas fa-save"></i> Lưu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DELETE CONFIRM -->
+    <div class="modal-overlay" id="deleteUserModal">
+        <div class="modal" style="max-width:420px">
+            <div class="modal-header">
+                <h3 style="color:var(--danger)"><i class="fas fa-trash"></i> Xác nhận xoá</h3>
+            </div>
+            <div class="modal-body">
+                <p>Bạn có chắc muốn xoá tài khoản <strong id="deleteUserName"></strong>?</p>
+                <div class="alert alert-danger mt-3" style="margin-top:12px"><i class="fas fa-exclamation-triangle"></i>
+                    Tất cả kết quả thi liên quan cũng sẽ bị xoá.</div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="Utils.closeModal('deleteUserModal')">Huỷ</button>
+                <button class="btn btn-danger" id="confirmDeleteUser"><i class="fas fa-trash"></i> Xoá</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/data.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        const session = Auth.requireAuthAdmin();
+        document.getElementById('userAvatar').textContent = session.avatar;
+        Utils.initSidebar();
+        document.getElementById('logoutBtn').addEventListener('click', () => { Auth.logout(); location.href = 'login.html'; });
+
+        let editingId = null;
+        let deleteTarget = null;
+
+        // ── KPI ──────────────────────────────────────────────────────
+        function updateKPIs() {
+            const students = DB.getStudents();
+            const admins = DB.users.filter(u => u.role === 'admin');
+            const active = students.filter(s => DB.getResultsByUser(s.id).length > 0);
+            const allScores = DB.results.map(r => r.score);
+            const avg = allScores.length ? (allScores.reduce((a, b) => a + b, 0) / allScores.length).toFixed(1) : '—';
+            document.getElementById('kpiTotal').textContent = students.length;
+            document.getElementById('kpiActive').textContent = active.length;
+            document.getElementById('kpiAvgScore').textContent = avg;
+            document.getElementById('kpiAdmins').textContent = admins.length;
+        }
+
+        // ── CLASS FILTER ──────────────────────────────────────────────
+        function populateClassFilter() {
+            const classes = [...new Set(DB.getStudents().map(u => u.class).filter(Boolean))].sort();
+            const sel = document.getElementById('classFilter');
+            classes.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
+        }
+
+        let currentPage = 1;
+        let pageSize = 10;
+        let filteredUsers = [];
+
+        // ── RENDER TABLE ──────────────────────────────────────────────
+        function renderTable() {
+            const q = document.getElementById('userSearch').value.toLowerCase();
+            const role = document.getElementById('roleFilter').value;
+            const cls = document.getElementById('classFilter').value;
+
+            filteredUsers = DB.users.filter(u => {
+                if (role && u.role !== role) return false;
+                if (cls && u.class !== cls) return false;
+                if (q) return (u.name || '').toLowerCase().includes(q) || (u.username || '').toLowerCase().includes(q) || (u.studentId || '').toLowerCase().includes(q) || (u.class || '').toLowerCase().includes(q);
+                return true;
+            });
+
+            const total = filteredUsers.length;
+            const totalPages = Math.max(1, Math.ceil(total / pageSize));
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const start = (currentPage - 1) * pageSize;
+            const pageUsers = filteredUsers.slice(start, start + pageSize);
+
+            document.getElementById('userCount').textContent = total;
+            document.getElementById('pageInfo').textContent = `Hiển thị ${total === 0 ? 0 : start + 1}–${Math.min(start + pageSize, total)} / ${total}`;
+
+            document.getElementById('userTableBody').innerHTML = pageUsers.map(u => {
+                const results = DB.getResultsByUser(u.id);
+                const avg = results.length ? (results.reduce((a, r) => a + r.score, 0) / results.length).toFixed(1) : '—';
+                const initials = u.avatar || (u.name ? u.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?');
+                return `<tr>
+        <td><div class="flex items-center gap-3" style="gap:10px">
+          <div class="user-avatar-cell">${initials}</div>
+          <div><div class="fw-700" style="font-size:14px">${u.name || '—'}</div><div style="font-size:11px;color:var(--text-muted)">${u.studentId || ''}</div></div>
+        </div></td>
+        <td><code style="background:var(--surface2);padding:3px 8px;border-radius:var(--radius-sm);font-size:12px">${u.username}</code></td>
+        <td style="font-size:13px;color:var(--text-muted)">${u.studentId || '—'}</td>
+        <td style="font-size:13px">${u.email || '—'}</td>
+        <td style="font-size:13px">${u.class || '—'}</td>
+        <td><span class="${u.role === 'admin' ? 'role-admin' : 'role-student'}">${u.role === 'admin' ? '🔑 Admin' : '👤 SV'}</span></td>
+        <td><span class="fs-12 text-muted">${results.length} bài • TB: <strong>${avg}</strong></span></td>
+        <td style="text-align:right">
+          <div class="flex gap-2" style="justify-content:flex-end">
+            <button class="btn btn-ghost btn-sm" onclick="openEditModal('${u.id}')"><i class="fas fa-edit"></i></button>
+            ${u.id !== 'admin' && u.id !== session.userId ? `<button class="btn btn-danger btn-sm" onclick="openDeleteModal('${u.id}')"><i class="fas fa-trash"></i></button>` : ''}
+          </div>
+        </td>
+      </tr>`;
+            }).join('') || `<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text-muted)"><i class="fas fa-search"></i> Không tìm thấy người dùng nào.</td></tr>`;
+
+            // Render page number buttons
+            const pagesEl = document.getElementById('pageNumbers');
+            pagesEl.innerHTML = '';
+            const maxBtns = 5;
+            let startP = Math.max(1, currentPage - 2);
+            let endP = Math.min(totalPages, startP + maxBtns - 1);
+            if (endP - startP < maxBtns - 1) startP = Math.max(1, endP - maxBtns + 1);
+            for (let p = startP; p <= endP; p++) {
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-sm';
+                btn.dataset.page = p;
+                btn.style.cssText = `min-width:32px;padding:0 8px;${p === currentPage ? 'background:var(--ptit-red);color:#fff;border:none;' : 'background:var(--surface);border:1px solid var(--border);'}`;
+                btn.textContent = p;
+                pagesEl.appendChild(btn);
+            }
+            pagesEl.onclick = e => {
+                const pg = e.target.dataset.page;
+                if (pg) { currentPage = +pg; renderTable(); }
+            };
+            document.getElementById('prevPageBtn').disabled = currentPage <= 1;
+            document.getElementById('nextPageBtn').disabled = currentPage >= totalPages;
+        }
+
+        function changePage(delta) {
+            const total = filteredUsers.length;
+            const totalPages = Math.max(1, Math.ceil(total / pageSize));
+            currentPage = Math.max(1, Math.min(totalPages, currentPage + delta));
+            renderTable();
+        }
+
+        // ── MODAL ────────────────────────────────────────────────────
+        function openAddModal() {
+            editingId = null;
+            document.getElementById('modalTitle').innerHTML = '<i class="fas fa-user-plus" style="color:var(--ptit-red)"></i> Thêm sinh viên mới';
+            document.getElementById('pwRequired').style.display = 'inline';
+            ['uName', 'uUsername', 'uEmail', 'uStudentId', 'uClass', 'uPassword'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('uRole').value = 'student';
+            document.getElementById('modalAlert').innerHTML = '';
+            Utils.openModal('userModal');
+        }
+
+        function openEditModal(id) {
+            editingId = id;
+            const u = DB.getUserById(id);
+            if (!u) return;
+            document.getElementById('modalTitle').innerHTML = '<i class="fas fa-user-edit" style="color:var(--ptit-red)"></i> Chỉnh sửa tài khoản';
+            document.getElementById('pwRequired').style.display = 'none';
+            document.getElementById('uName').value = u.name || '';
+            document.getElementById('uUsername').value = u.username;
+            document.getElementById('uEmail').value = u.email || '';
+            document.getElementById('uStudentId').value = u.studentId || '';
+            document.getElementById('uClass').value = u.class || '';
+            document.getElementById('uPassword').value = '';
+            document.getElementById('uRole').value = u.role;
+            document.getElementById('modalAlert').innerHTML = '';
+            Utils.openModal('userModal');
+        }
+
+        function closeUserModal() { Utils.closeModal('userModal'); }
+
+        document.getElementById('saveUserBtn').addEventListener('click', () => {
+            const name = document.getElementById('uName').value.trim();
+            const username = document.getElementById('uUsername').value.trim();
+            const email = document.getElementById('uEmail').value.trim();
+            const password = document.getElementById('uPassword').value;
+            const role = document.getElementById('uRole').value;
+
+            // Validations
+            let valid = true;
+            ['uNameErr', 'uUsernameErr', 'uPasswordErr'].forEach(id => { const el = document.getElementById(id); el.textContent = ''; el.classList.remove('show'); });
+            if (!name) { const e = document.getElementById('uNameErr'); e.textContent = 'Vui lòng nhập họ tên'; e.classList.add('show'); valid = false; }
+            if (!username || username.length < 4) { const e = document.getElementById('uUsernameErr'); e.textContent = 'Username ≥ 4 ký tự'; e.classList.add('show'); valid = false; }
+            if (!editingId && (!password || password.length < 6)) { const e = document.getElementById('uPasswordErr'); e.textContent = 'Mật khẩu ≥ 6 ký tự'; e.classList.add('show'); valid = false; }
+            if (!valid) return;
+
+            // Check duplicate username
+            const existing = DB.users.find(u => u.username === username && u.id !== editingId);
+            if (existing) {
+                document.getElementById('modalAlert').innerHTML = `<div class="alert alert-danger"><i class="fas fa-times-circle"></i> Username đã tồn tại.</div>`;
+                return;
+            }
+
+            const avatar = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+
+            if (editingId) {
+                const updates = {
+                    name, username, email, role, avatar,
+                    studentId: document.getElementById('uStudentId').value.trim(),
+                    class: document.getElementById('uClass').value.trim()
+                };
+                if (password) updates.password = password;
+                DB.updateUser(editingId, updates);
+                Utils.toast('Đã cập nhật tài khoản!', 'success');
+            } else {
+                const newUser = {
+                    id: 'u' + Date.now(), username, password, name, email, role, avatar,
+                    studentId: document.getElementById('uStudentId').value.trim(),
+                    class: document.getElementById('uClass').value.trim()
+                };
+                DB.addUser(newUser);
+                Utils.toast('Đã thêm tài khoản mới!', 'success');
+            }
+            closeUserModal();
+            renderTable();
+            updateKPIs();
+        });
+
+        // ── DELETE ────────────────────────────────────────────────────
+        function openDeleteModal(id) {
+            deleteTarget = id;
+            const u = DB.getUserById(id);
+            document.getElementById('deleteUserName').textContent = u?.name || u?.username;
+            Utils.openModal('deleteUserModal');
+        }
+
+        document.getElementById('confirmDeleteUser').addEventListener('click', () => {
+            if (!deleteTarget) return;
+            DB.deleteUser(deleteTarget);
+            DB.results = DB.results.filter(r => r.userId !== deleteTarget);
+            Utils.closeModal('deleteUserModal');
+            Utils.toast('Đã xoá tài khoản!', 'danger');
+            renderTable();
+            updateKPIs();
+        });
+
+        // ── EXPORT ────────────────────────────────────────────────────
+        function exportCSV() {
+            const rows = [['ID', 'Username', 'Họ tên', 'Email', 'Mã SV', 'Lớp', 'Vai trò', 'Số bài đã thi', 'Điểm TB']];
+            DB.users.filter(u => u.role === 'student').forEach(u => {
+                const results = DB.getResultsByUser(u.id);
+                const avg = results.length ? (results.reduce((a, r) => a + r.score, 0) / results.length).toFixed(2) : '';
+                rows.push([u.id, u.username, u.name || '', u.email || '', u.studentId || '', u.class || '', u.role, results.length, avg]);
+            });
+            const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+            const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csv);
+            a.download = 'danh_sach_sinh_vien.csv'; a.click();
+            Utils.toast('Đã xuất file CSV!', 'success');
+        }
+
+        // ── EVENTS ────────────────────────────────────────────────────
+        document.getElementById('addUserBtn').addEventListener('click', openAddModal);
+        document.getElementById('userSearch').addEventListener('input', renderTable);
+        document.getElementById('roleFilter').addEventListener('change', renderTable);
+        document.getElementById('classFilter').addEventListener('change', renderTable);
+
+        // Init
+        updateKPIs();
+        populateClassFilter();
+        renderTable();
+    </script>
+</body>
+
+</html>

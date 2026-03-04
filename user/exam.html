@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bài Thi — Hệ thống Thi PTIT</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        .exam-layout {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 24px;
+            align-items: start
+        }
+
+        .exam-header {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 20px 24px;
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            box-shadow: var(--shadow-sm);
+            position: sticky;
+            top: calc(var(--topbar-h) + 16px);
+            z-index: 10
+        }
+
+        .exam-title-block h3 {
+            margin-bottom: 4px;
+            font-size: 18px
+        }
+
+        .question-card {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm)
+        }
+
+        .question-number {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--ptit-red);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            margin-bottom: 10px
+        }
+
+        .question-text {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text);
+            line-height: 1.5;
+            margin-bottom: 20px
+        }
+
+        .nav-btns {
+            display: flex;
+            gap: 12px;
+            justify-content: space-between;
+            margin-top: 24px;
+            flex-wrap: wrap
+        }
+
+        .palette-card {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            position: sticky;
+            top: calc(var(--topbar-h) + 16px)
+        }
+
+        .palette-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 16px;
+            font-size: 12px
+        }
+
+        .palette-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted)
+        }
+
+        .progress-info {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 12px
+        }
+
+        .flag-btn {
+            padding: 8px 16px;
+            border: 1.5px dashed var(--warning);
+            border-radius: var(--radius-sm);
+            background: transparent;
+            color: var(--warning);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all var(--transition);
+            margin-top: 20px;
+            width: 100%;
+            justify-content: center
+        }
+
+        .flag-btn:hover,
+        .flag-btn.flagged {
+            background: var(--warning-soft)
+        }
+
+        .flag-btn.flagged {
+            border-style: solid
+        }
+
+        .submit-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border)
+        }
+
+        @media(max-width:900px) {
+            .exam-layout {
+                grid-template-columns: 1fr
+            }
+
+            .palette-card {
+                position: static
+            }
+
+            .exam-header {
+                top: var(--topbar-h)
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- TOPBAR -->
+    <div class="topbar">
+        <a class="topbar-logo" href="dashboard.html" style="text-decoration:none">
+            <div
+                style="width:40px;height:40px;background:var(--ptit-red);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px">
+                P</div>
+            <div>
+                <div class="logo-text">PExam PTIT</div>
+                <div class="logo-sub">Đang thi</div>
+            </div>
+        </a>
+        <div class="topbar-spacer"></div>
+        <div class="topbar-actions">
+            <div class="timer-display"><i class="fas fa-clock"></i> <span id="timerDisplay">--:--</span></div>
+            <div class="topbar-avatar" id="userAvatar" style="cursor:default">?</div>
+        </div>
+    </div>
+
+    <div class="user-layout">
+        <div class="user-main">
+
+            <!-- Exam Header -->
+            <div class="exam-header">
+                <div class="exam-title-block">
+                    <h3 id="examTitle">Đang tải...</h3>
+                    <div class="flex gap-3 items-center mt-1">
+                        <span class="badge badge-gray" id="examTypeBadge"></span>
+                        <span style="font-size:13px;color:var(--text-muted)"><i class="fas fa-question-circle"></i>
+                            <span id="examQCount">0</span> câu hỏi</span>
+                    </div>
+                </div>
+                <div class="flex gap-3 items-center">
+                    <div class="progress-bar-wrap" style="width:120px">
+                        <div class="progress-bar-fill" id="progressBar" style="width:0%"></div>
+                    </div>
+                    <span id="progressLabel" style="font-size:13px;font-weight:600;color:var(--text-muted)">0/0</span>
+                </div>
+            </div>
+
+            <div class="exam-layout">
+                <!-- QUESTION AREA -->
+                <div>
+                    <div class="question-card">
+                        <div class="question-number" id="qNumber">Câu 1/15</div>
+                        <div class="question-text" id="qText">Đang tải câu hỏi...</div>
+                        <div class="option-list" id="optionList"></div>
+                        <button class="flag-btn" id="flagBtn"><i class="fas fa-flag"></i> Đánh dấu câu hỏi này</button>
+                    </div>
+                    <div class="nav-btns">
+                        <button class="btn btn-ghost" id="prevBtn"><i class="fas fa-chevron-left"></i> Câu
+                            trước</button>
+                        <button class="btn btn-outline" id="nextBtn">Câu tiếp <i
+                                class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+
+                <!-- SIDEBAR PALETTE -->
+                <div class="palette-card">
+                    <h4 style="margin-bottom:14px"><i class="fas fa-th"></i> Bảng câu hỏi</h4>
+                    <div class="palette-legend">
+                        <div class="palette-legend-item"><span class="q-btn answered"
+                                style="width:20px;height:20px;pointer-events:none;font-size:0"></span> Đã trả lời</div>
+                        <div class="palette-legend-item"><span class="q-btn flagged"
+                                style="width:20px;height:20px;pointer-events:none;font-size:0"></span> Đã đánh dấu</div>
+                        <div class="palette-legend-item"><span class="q-btn current"
+                                style="width:20px;height:20px;pointer-events:none;font-size:0"></span> Câu hiện tại
+                        </div>
+                        <div class="palette-legend-item"><span class="q-btn"
+                                style="width:20px;height:20px;pointer-events:none;font-size:0"></span> Chưa trả lời
+                        </div>
+                    </div>
+                    <div class="q-palette" id="qPalette"></div>
+                    <div class="submit-section">
+                        <div class="progress-info" id="paletteProgress"></div>
+                        <button class="btn btn-primary w-100" id="submitBtn"><i class="fas fa-paper-plane"></i> Nộp
+                            bài</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUBMIT MODAL -->
+    <div class="modal-overlay" id="submitModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-paper-plane" style="color:var(--ptit-red)"></i> Xác nhận nộp bài</h3>
+                <button class="modal-close" onclick="Utils.closeModal('submitModal')"><i
+                        class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <p id="submitSummary"></p>
+                <div class="alert alert-warning mt-3" style="margin-top:12px"><i
+                        class="fas fa-exclamation-triangle"></i> Sau khi nộp bài, bạn không thể thay đổi câu trả lời.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="Utils.closeModal('submitModal')"><i class="fas fa-times"></i>
+                    Huỷ</button>
+                <button class="btn btn-primary" id="confirmSubmitBtn"><i class="fas fa-check"></i> Xác nhận nộp</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TIMEOUT MODAL -->
+    <div class="modal-overlay" id="timeoutModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-hourglass-end" style="color:var(--danger)"></i> Hết giờ!</h3>
+            </div>
+            <div class="modal-body">
+                <p>Thời gian làm bài đã kết thúc. Bài của bạn đã được tự động nộp.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="timeoutOkBtn"><i class="fas fa-chart-bar"></i> Xem kết quả</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/data.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        const session = Auth.requireAuth('student');
+        if (!session) throw new Error();
+
+        // Parse URL
+        const params = new URLSearchParams(location.search);
+        const examId = params.get('examId');
+        if (!examId) { location.href = 'dashboard.html'; throw new Error(); }
+
+        const exam = DB.getExam(examId);
+        const questions = DB.getQuestions(examId);
+
+        if (!exam || questions.length === 0) { alert('Không tìm thấy bài thi hoặc bài thi chưa có câu hỏi!'); location.href = 'dashboard.html'; throw new Error(); }
+
+        // State
+        let currentQ = 0;
+        const answers = new Array(questions.length).fill(-1);
+        const flagged = new Set();
+        let timerObj = null;
+        const startTime = Date.now();
+
+        // Init UI
+        document.getElementById('examTitle').textContent = exam.title;
+        document.getElementById('examTypeBadge').textContent = Utils.typeLabel(exam.type);
+        document.getElementById('examTypeBadge').className = 'badge ' + Utils.typeBadge(exam.type);
+        document.getElementById('examQCount').textContent = questions.length;
+        document.getElementById('userAvatar').textContent = session.avatar;
+
+        // Build palette
+        function buildPalette() {
+            const pal = document.getElementById('qPalette');
+            pal.innerHTML = questions.map((_, i) => {
+                let cls = '';
+                if (i === currentQ) cls = 'current';
+                else if (flagged.has(i)) cls = 'flagged';
+                else if (answers[i] !== -1) cls = 'answered';
+                return `<button class="q-btn ${cls}" data-idx="${i}">${i + 1}</button>`;
+            }).join('');
+            pal.querySelectorAll('.q-btn').forEach(btn => {
+                btn.addEventListener('click', () => { currentQ = +btn.dataset.idx; renderQuestion(); });
+            });
+            // progress
+            const answered = answers.filter(a => a !== -1).length;
+            document.getElementById('paletteProgress').textContent = `Đã làm: ${answered}/${questions.length} câu`;
+            document.getElementById('progressBar').style.width = (answered / questions.length * 100) + '%';
+            document.getElementById('progressLabel').textContent = answered + '/' + questions.length;
+        }
+
+        // Render question
+        function renderQuestion() {
+            const q = questions[currentQ];
+            document.getElementById('qNumber').textContent = `Câu ${currentQ + 1}/${questions.length}`;
+            document.getElementById('qText').textContent = q.text;
+            const letters = ['A', 'B', 'C', 'D', 'E'];
+            document.getElementById('optionList').innerHTML = q.options.map((opt, i) =>
+                `<div class="option-item ${answers[currentQ] === i ? 'selected' : ''}" data-idx="${i}">
+      <div class="option-letter">${letters[i]}</div>
+      <div class="option-text">${opt}</div>
+    </div>`
+            ).join('');
+            document.querySelectorAll('.option-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const idx = +item.dataset.idx;
+                    answers[currentQ] = idx;
+                    document.querySelectorAll('.option-item').forEach(o => o.classList.remove('selected'));
+                    item.classList.add('selected');
+                    buildPalette();
+                });
+            });
+            const flagBtn = document.getElementById('flagBtn');
+            flagBtn.classList.toggle('flagged', flagged.has(currentQ));
+            flagBtn.innerHTML = flagged.has(currentQ) ? '<i class="fas fa-flag"></i> Bỏ đánh dấu' : '<i class="fas fa-flag"></i> Đánh dấu câu hỏi này';
+            document.getElementById('prevBtn').disabled = currentQ === 0;
+            document.getElementById('nextBtn').textContent = currentQ === questions.length - 1 ? 'Xem lại' : 'Câu tiếp';
+            document.getElementById('nextBtn').innerHTML = currentQ === questions.length - 1
+                ? '<i class="fas fa-list-ul"></i> Xem bảng'
+                : 'Câu tiếp <i class="fas fa-chevron-right"></i>';
+            buildPalette();
+        }
+
+        // Navigation
+        document.getElementById('prevBtn').addEventListener('click', () => { if (currentQ > 0) { currentQ--; renderQuestion(); } });
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            if (currentQ < questions.length - 1) { currentQ++; renderQuestion(); }
+            else { document.getElementById('qPalette').scrollIntoView({ behavior: 'smooth' }); }
+        });
+
+        // Flag
+        document.getElementById('flagBtn').addEventListener('click', () => {
+            if (flagged.has(currentQ)) flagged.delete(currentQ); else flagged.add(currentQ);
+            renderQuestion();
+        });
+
+        // Submit
+        function openSubmit() {
+            const answered = answers.filter(a => a !== -1).length;
+            const unanswered = questions.length - answered;
+            const flaggedCount = flagged.size;
+            document.getElementById('submitSummary').innerHTML =
+                `<strong>Thống kê:</strong><br>
+    ✅ Đã trả lời: <strong>${answered}/${questions.length}</strong> câu<br>
+    ❓ Chưa trả lời: <strong>${unanswered}</strong> câu<br>
+    🚩 Đã đánh dấu: <strong>${flaggedCount}</strong> câu`;
+            Utils.openModal('submitModal');
+        }
+
+        document.getElementById('submitBtn').addEventListener('click', openSubmit);
+        document.getElementById('confirmSubmitBtn').addEventListener('click', doSubmit);
+        document.getElementById('timeoutOkBtn').addEventListener('click', () => { doSubmit(true); });
+
+        function doSubmit(isTimeout = false) {
+            if (timerObj) timerObj.stop();
+            // Calculate score
+            let correct = 0;
+            answers.forEach((ans, i) => { if (ans === questions[i].correct) correct++; });
+            const score = (correct / questions.length) * exam.totalScore;
+            const duration = Math.round((Date.now() - startTime) / 1000);
+            const result = {
+                id: 'r' + Date.now(), userId: session.userId, examId,
+                score, correct, total: questions.length, status: 'completed',
+                duration: Math.round(duration / 60), submitTime: new Date().toISOString(), answers: [...answers]
+            };
+            DB.addResult(result);
+            sessionStorage.setItem('lastResult', JSON.stringify({ ...result, examId, userId: session.userId }));
+            Utils.closeAllModals();
+            location.href = `results.html?examId=${examId}&userId=${session.userId}&new=1`;
+        }
+
+        // Timer
+        const timerEl = document.getElementById('timerDisplay').parentElement;
+        timerObj = Utils.startTimer(exam.duration * 60, document.getElementById('timerDisplay'), () => {
+            Utils.closeAllModals();
+            Utils.openModal('timeoutModal');
+        });
+
+        renderQuestion();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard — PTIT Exam</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .recent-table-wrap {
+            overflow-x: auto
+        }
+
+        .activity-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 24px
+        }
+
+        .quick-action {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 20px;
+            border-radius: var(--radius-lg);
+            border: 2px dashed var(--border);
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: all var(--transition);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600
+        }
+
+        .quick-action:hover {
+            border-color: var(--ptit-red);
+            color: var(--ptit-red);
+            background: var(--ptit-red-soft)
+        }
+
+        .quick-action i {
+            font-size: 24px
+        }
+    </style>
+</head>
+
+<body>
+    <!-- TOPBAR -->
+    <div class="topbar">
+        <button class="sidebar-toggle" id="sidebarToggle"><i class="fas fa-bars"></i></button>
+        <div class="topbar-logo">
+            <div
+                style="width:40px;height:40px;background:var(--ptit-red);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px">
+                P</div>
+            <div>
+                <div class="logo-text">PExam PTIT</div>
+                <div class="logo-sub">Admin Portal</div>
+            </div>
+        </div>
+        <div class="topbar-spacer"></div>
+        <div class="topbar-actions">
+            <div class="dropdown">
+                <div class="topbar-user" id="topbarUserBtn">
+                    <div class="topbar-avatar" id="userAvatar">AD</div>
+                    <div>
+                        <div class="topbar-username" id="userName">Admin</div>
+                        <div class="topbar-role">Quản trị viên</div>
+                    </div>
+                    <i class="fas fa-chevron-down fs-12" style="color:var(--text-muted)"></i>
+                </div>
+                <div class="dropdown-menu topbar-dropdown">
+                    <div class="dropdown-item"><i class="fas fa-user"></i> Hồ sơ admin</div>
+                    <div class="dropdown-divider"></div>
+                    <div class="dropdown-item danger" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Đăng xuất</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+        <nav class="sidebar-nav">
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Tổng quan</div>
+                <a class="sidebar-link active" href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Quản lý</div>
+                <a class="sidebar-link" href="exam-editor.html"><i class="fas fa-file-alt"></i> Quản lý kỳ thi</a>
+                <a class="sidebar-link" href="student-results.html"><i class="fas fa-users"></i> Quản lý sinh viên</a>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Báo cáo</div>
+                <a class="sidebar-link" href="statistics.html"><i class="fas fa-chart-bar"></i> Thống kê</a>
+                <a class="sidebar-link" href="student-results.html"><i class="fas fa-table"></i> Kết quả SV</a>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <div style="font-size:11px;color:rgba(255,255,255,.4);text-align:center">PExam PTIT v1.0</div>
+        </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="admin-layout">
+        <main class="admin-main">
+
+            <div class="page-header-row page-header">
+                <div>
+                    <h2>Dashboard</h2>
+                    <p>Tổng quan hệ thống thi trực tuyến PTIT</p>
+                </div>
+                <div class="flex gap-3">
+                    <a href="exam-editor.html" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Tạo kỳ thi</a>
+                </div>
+            </div>
+
+            <!-- KPI -->
+            <div class="kpi-grid" id="kpiGrid"></div>
+
+            <div class="grid-2" style="margin-bottom:24px">
+                <!-- Quick Actions -->
+                <div class="card">
+                    <div class="card-header">
+                        <h4><i class="fas fa-bolt"></i> Thao tác nhanh</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="quick-actions">
+                            <a href="exam-editor.html" class="quick-action"><i class="fas fa-plus-circle"></i> Tạo kỳ
+                                thi mới</a>
+                            <a href="exam-editor.html" class="quick-action"><i class="fas fa-edit"></i> Chỉnh sửa câu
+                                hỏi</a>
+                            <a href="statistics.html" class="quick-action"><i class="fas fa-chart-line"></i> Xem thống
+                                kê</a>
+                            <a href="student-results.html" class="quick-action"><i class="fas fa-search"></i> Tra cứu
+                                sinh viên</a>
+                        </div>
+                    </div>
+                </div>
+                <!-- Exam summary -->
+                <div class="card">
+                    <div class="card-header">
+                        <h4><i class="fas fa-chart-pie"></i> Phân loại kỳ thi</h4>
+                    </div>
+                    <div class="card-body">
+                        <div style="position:relative;height:180px"><canvas id="examTypeChart"></canvas></div>
+                        <div class="legend mt-3" style="margin-top:12px;justify-content:center">
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:#0284c7"></div> Luyện tập
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:#d97706"></div> Giữa kỳ
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:#C0272D"></div> Cuối kỳ
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="card">
+                <div class="card-header">
+                    <h4><i class="fas fa-history"></i> Hoạt động thi gần đây</h4>
+                    <a href="student-results.html" class="btn btn-ghost btn-sm">Xem tất cả</a>
+                </div>
+                <div class="recent-table-wrap">
+                    <table class="table" id="recentTable">
+                        <thead>
+                            <tr>
+                                <th>Sinh viên</th>
+                                <th>Kỳ thi</th>
+                                <th>Điểm</th>
+                                <th>Kết quả</th>
+                                <th>Thời gian</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../js/data.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        const session = Auth.requireAuthAdmin();
+        document.getElementById('userAvatar').textContent = session.avatar;
+        document.getElementById('userName').textContent = session.name;
+        Utils.initSidebar();
+
+        document.getElementById('topbarUserBtn').addEventListener('click', e => { e.stopPropagation(); document.querySelector('.dropdown').classList.toggle('open'); });
+        document.addEventListener('click', () => document.querySelector('.dropdown').classList.remove('open'));
+        document.getElementById('logoutBtn').addEventListener('click', () => { Auth.logout(); location.href = 'login.html'; });
+
+        // KPIs
+        const students = DB.getStudents();
+        const exams = DB.exams;
+        const results = DB.results;
+        const avgScore = results.length ? (results.reduce((a, r) => a + r.score, 0) / results.length).toFixed(1) : 0;
+        const completedCount = results.filter(r => r.status === 'completed').length;
+        const totalPossible = students.length * exams.length;
+        const compRate = totalPossible ? Math.round(completedCount / totalPossible * 100) : 0;
+
+        const kpis = [
+            { icon: 'fa-users', color: 'blue', value: students.length, label: 'Sinh viên', trend: '+3', up: true },
+            { icon: 'fa-file-alt', color: 'red', value: exams.length, label: 'Kỳ thi', trend: '+1', up: true },
+            { icon: 'fa-star', color: 'orange', value: avgScore, label: 'Điểm TB', trend: '+0.2', up: true },
+            { icon: 'fa-check-circle', color: 'green', value: compRate + '%', label: 'Tỷ lệ hoàn thành', trend: '+5%', up: true },
+        ];
+        document.getElementById('kpiGrid').innerHTML = kpis.map(k =>
+            `<div class="kpi-card">
+    <div class="kpi-icon ${k.color}"><i class="fas ${k.icon}"></i></div>
+    <div class="kpi-info">
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-trend up"><i class="fas fa-arrow-up"></i> ${k.trend} tháng này</div>
+    </div>
+  </div>`
+        ).join('');
+
+        // Exam type pie
+        const types = { practice: 0, midterm: 0, final: 0 };
+        exams.forEach(e => types[e.type]++);
+        new Chart(document.getElementById('examTypeChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Luyện tập', 'Giữa kỳ', 'Cuối kỳ'],
+                datasets: [{ data: [types.practice, types.midterm, types.final], backgroundColor: ['#0284c7', '#d97706', '#C0272D'], borderWidth: 0 }]
+            },
+            options: { cutout: '65%', plugins: { legend: { display: false } } }
+        });
+
+        // Recent results table
+        const recentResults = [...results].sort((a, b) => new Date(b.submitTime) - new Date(a.submitTime)).slice(0, 10);
+        document.getElementById('recentBody').innerHTML = recentResults.map(r => {
+            const user = DB.getUserById(r.userId);
+            const exam = DB.getExam(r.examId);
+            const pass = r.score >= (exam?.passingScore || 5);
+            return `<tr>
+    <td><div class="flex items-center gap-2"><div class="topbar-avatar" style="width:30px;height:30px;font-size:11px">${user?.avatar || '?'}</div><span>${user?.name || '—'}</span></div></td>
+    <td>${exam?.title || '—'}</td>
+    <td><strong style="color:${Utils.scoreColor(r.score)}">${r.score.toFixed(2)}</strong></td>
+    <td><span class="badge ${pass ? 'badge-green' : 'badge-red'}">${pass ? 'Đạt' : 'Không đạt'}</span></td>
+    <td>${Utils.formatDateTime(r.submitTime)}</td>
+  </tr>`;
+        }).join('');
+    </script>
+</body>
+
+</html>

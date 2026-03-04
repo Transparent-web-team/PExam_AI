@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thống kê — Admin PTIT</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .chart-card {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden
+        }
+
+        .chart-card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between
+        }
+
+        .chart-card-body {
+            padding: 20px
+        }
+
+        .chart-wrap {
+            position: relative;
+            height: 260px
+        }
+
+        .dist-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px
+        }
+
+        .dist-label {
+            font-size: 12px;
+            font-weight: 600;
+            width: 60px;
+            color: var(--text-muted);
+            flex-shrink: 0
+        }
+
+        .dist-bar-wrap {
+            flex: 1;
+            background: var(--border);
+            border-radius: 99px;
+            height: 10px;
+            overflow: hidden
+        }
+
+        .dist-bar {
+            height: 100%;
+            border-radius: 99px;
+            transition: width .6s ease
+        }
+
+        .dist-count {
+            font-size: 12px;
+            font-weight: 700;
+            width: 30px;
+            text-align: right;
+            color: var(--text);
+            flex-shrink: 0
+        }
+    </style>
+</head>
+
+<body>
+    <!-- TOPBAR -->
+    <div class="topbar">
+        <button class="sidebar-toggle" id="sidebarToggle"><i class="fas fa-bars"></i></button>
+        <div class="topbar-logo">
+            <div
+                style="width:40px;height:40px;background:var(--ptit-red);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px">
+                P</div>
+            <div>
+                <div class="logo-text">PExam PTIT</div>
+                <div class="logo-sub">Thống kê</div>
+            </div>
+        </div>
+        <div class="topbar-spacer"></div>
+        <div class="topbar-actions">
+            <button class="btn btn-outline btn-sm" id="exportPdfBtn"><i class="fas fa-file-pdf"></i> Xuất PDF</button>
+            <button class="btn btn-success btn-sm" id="exportExcelBtn"><i class="fas fa-file-excel"></i> Xuất
+                Excel</button>
+            <div class="topbar-avatar" id="userAvatar">AD</div>
+            <button class="btn btn-ghost btn-sm" id="logoutBtn"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+        <nav class="sidebar-nav">
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Tổng quan</div>
+                <a class="sidebar-link" href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Quản lý</div>
+                <a class="sidebar-link" href="exam-editor.html"><i class="fas fa-file-alt"></i> Quản lý kỳ thi</a>
+                <a class="sidebar-link" href="student-results.html"><i class="fas fa-users"></i> Quản lý sinh viên</a>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Báo cáo</div>
+                <a class="sidebar-link active" href="statistics.html"><i class="fas fa-chart-bar"></i> Thống kê</a>
+                <a class="sidebar-link" href="student-results.html"><i class="fas fa-table"></i> Kết quả SV</a>
+            </div>
+        </nav>
+    </div>
+
+    <!-- MAIN -->
+    <div class="admin-layout">
+        <main class="admin-main">
+
+            <div class="page-header-row page-header">
+                <div>
+                    <h2><i class="fas fa-chart-bar" style="color:var(--ptit-red)"></i> Thống kê tổng hợp</h2>
+                    <p>Phân tích kết quả các kỳ thi</p>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="filter-bar">
+                <div class="form-group" style="margin-bottom:0;min-width:200px">
+                    <select class="form-control" id="filterExam">
+                        <option value="">Tất cả kỳ thi</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                    <select class="form-control" id="filterType">
+                        <option value="">Tất cả loại</option>
+                        <option value="practice">Luyện tập</option>
+                        <option value="midterm">Giữa kỳ</option>
+                        <option value="final">Cuối kỳ</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="renderStats()"><i class="fas fa-sync"></i> Cập
+                    nhật</button>
+            </div>
+
+            <!-- KPI -->
+            <div class="kpi-grid" id="statKpis" style="margin-bottom:24px"></div>
+
+            <!-- Charts Row 1 -->
+            <div class="grid-2" style="margin-bottom:20px">
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <h4><i class="fas fa-chart-line"></i> Xu hướng điểm theo kỳ thi</h4>
+                    </div>
+                    <div class="chart-card-body">
+                        <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <h4><i class="fas fa-chart-bar"></i> Phân phối điểm số</h4>
+                    </div>
+                    <div class="chart-card-body">
+                        <div id="distChart"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row 2 -->
+            <div class="grid-2" style="margin-bottom:20px">
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <h4><i class="fas fa-chart-pie"></i> Tỷ lệ đạt / không đạt</h4>
+                    </div>
+                    <div class="chart-card-body" style="display:flex;align-items:center;gap:24px">
+                        <div style="position:relative;height:180px;width:180px;flex-shrink:0"><canvas
+                                id="passChart"></canvas></div>
+                        <div id="passLegend"></div>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <h4><i class="fas fa-users"></i> Điểm TB theo sinh viên (Top 10)</h4>
+                    </div>
+                    <div class="chart-card-body">
+                        <div class="chart-wrap"><canvas id="studentChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h4><i class="fas fa-table"></i> Bảng kết quả chi tiết</h4><span id="tableCount"
+                        class="badge badge-gray"></span>
+                </div>
+                <div class="table-wrapper">
+                    <table class="table" id="statsTable">
+                        <thead>
+                            <tr>
+                                <th>Sinh viên</th>
+                                <th>Mã SV</th>
+                                <th>Kỳ thi</th>
+                                <th>Điểm</th>
+                                <th>Kết quả</th>
+                                <th>Thời gian làm</th>
+                                <th>Ngày thi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="statsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../js/data.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        const session = Auth.requireAuthAdmin();
+        document.getElementById('userAvatar').textContent = session.avatar;
+        Utils.initSidebar();
+        document.getElementById('logoutBtn').addEventListener('click', () => { Auth.logout(); location.href = 'login.html'; });
+
+        // Populate exam filter
+        DB.exams.forEach(e => {
+            const opt = document.createElement('option');
+            opt.value = e.id; opt.textContent = e.title;
+            document.getElementById('filterExam').appendChild(opt);
+        });
+
+        let trendChartObj = null, passChartObj = null, studentChartObj = null;
+
+        function getFilteredResults() {
+            const examId = document.getElementById('filterExam').value;
+            const type = document.getElementById('filterType').value;
+            return DB.results.filter(r => {
+                if (examId && r.examId !== examId) return false;
+                if (type) { const ex = DB.getExam(r.examId); if (!ex || ex.type !== type) return false; }
+                return true;
+            });
+        }
+
+        function renderStats() {
+            const results = getFilteredResults();
+            const scores = results.map(r => r.score);
+            const avg = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+            const passCount = results.filter(r => { const ex = DB.getExam(r.examId); return r.score >= (ex?.passingScore || 5); }).length;
+            const passRate = results.length ? Math.round(passCount / results.length * 100) : 0;
+            const maxScore = scores.length ? Math.max(...scores) : 0;
+            const minScore = scores.length ? Math.min(...scores) : 0;
+
+            // KPIs
+            document.getElementById('statKpis').innerHTML = [
+                { icon: 'fa-list-alt', color: 'blue', value: results.length, label: 'Lượt thi' },
+                { icon: 'fa-star', color: 'orange', value: avg.toFixed(2), label: 'Điểm trung bình' },
+                { icon: 'fa-check-circle', color: 'green', value: passRate + '%', label: 'Tỷ lệ đạt' },
+                { icon: 'fa-arrow-up', color: 'red', value: maxScore.toFixed(1) + ' / ' + minScore.toFixed(1), label: 'Cao nhất / Thấp nhất' },
+            ].map(k => `<div class="kpi-card"><div class="kpi-icon ${k.color}"><i class="fas ${k.icon}"></i></div><div class="kpi-info"><div class="kpi-value">${k.value}</div><div class="kpi-label">${k.label}</div></div></div>`).join('');
+
+            // Trend chart (avg per exam)
+            const examScores = {};
+            results.forEach(r => { if (!examScores[r.examId]) examScores[r.examId] = []; examScores[r.examId].push(r.score); });
+            const examLabels = Object.keys(examScores).map(id => DB.getExam(id)?.title?.substring(0, 20) + '...' || id);
+            const examAvgs = Object.keys(examScores).map(id => +(examScores[id].reduce((a, b) => a + b, 0) / examScores[id].length).toFixed(2));
+            if (trendChartObj) trendChartObj.destroy();
+            trendChartObj = new Chart(document.getElementById('trendChart'), {
+                type: 'line',
+                data: { labels: examLabels, datasets: [{ label: 'Điểm TB', data: examAvgs, borderColor: '#C0272D', backgroundColor: 'rgba(192,39,45,.1)', tension: .4, fill: true, pointRadius: 5, pointBackgroundColor: '#C0272D' }] },
+                options: { plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 10, grid: { color: '#e2e8f0' } }, x: { ticks: { maxRotation: 30 } } } }
+            });
+
+            // Score distribution
+            const ranges = ['0-2', '2-4', '4-5', '5-6', '6-7', '7-8', '8-9', '9-10'];
+            const rangeColors = ['#dc2626', '#ef4444', '#f97316', '#d97706', '#eab308', '#22c55e', '#16a34a', '#15803d'];
+            const counts = ranges.map((_, i) => {
+                const [lo, hi] = [[0, 2], [2, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10]][i];
+                return scores.filter(s => s >= lo && s < (hi === 10 ? 10.01 : hi)).length;
+            });
+            const maxCount = Math.max(...counts, 1);
+            document.getElementById('distChart').innerHTML = ranges.map((r, i) =>
+                `<div class="dist-row">
+      <div class="dist-label">${r}</div>
+      <div class="dist-bar-wrap"><div class="dist-bar" style="width:${(counts[i] / maxCount * 100).toFixed(1)}%;background:${rangeColors[i]}"></div></div>
+      <div class="dist-count">${counts[i]}</div>
+    </div>`
+            ).join('');
+
+            // Pass/fail donut
+            if (passChartObj) passChartObj.destroy();
+            passChartObj = new Chart(document.getElementById('passChart'), {
+                type: 'doughnut',
+                data: { datasets: [{ data: [passCount, results.length - passCount], backgroundColor: ['#16a34a', '#dc2626'], borderWidth: 0 }] },
+                options: { cutout: '70%', plugins: { legend: { display: false } } }
+            });
+            document.getElementById('passLegend').innerHTML = `
+    <div class="legend-item" style="margin-bottom:12px"><div class="legend-dot" style="background:#16a34a"></div> Đạt: <strong style="color:var(--success);margin-left:4px">${passCount}</strong></div>
+    <div class="legend-item" style="margin-bottom:12px"><div class="legend-dot" style="background:#dc2626"></div> Không đạt: <strong style="color:var(--danger);margin-left:4px">${results.length - passCount}</strong></div>
+    <div style="font-size:20px;font-weight:800;color:var(--text);margin-top:8px">${passRate}%</div>
+    <div style="font-size:11px;color:var(--text-muted)">Tỷ lệ đạt</div>`;
+
+            // Student avg chart (top 10)
+            const studentMap = {};
+            results.forEach(r => { if (!studentMap[r.userId]) studentMap[r.userId] = []; studentMap[r.userId].push(r.score); });
+            const studentAvgs = Object.entries(studentMap).map(([uid, ss]) => ({
+                name: DB.getUserById(uid)?.name || uid, avg: +(ss.reduce((a, b) => a + b, 0) / ss.length).toFixed(2)
+            })).sort((a, b) => b.avg - a.avg).slice(0, 10);
+            if (studentChartObj) studentChartObj.destroy();
+            studentChartObj = new Chart(document.getElementById('studentChart'), {
+                type: 'bar',
+                data: {
+                    labels: studentAvgs.map(s => s.name.split(' ').slice(-1)[0]),
+                    datasets: [{ label: 'Điểm TB', data: studentAvgs.map(s => s.avg), backgroundColor: studentAvgs.map(s => s.avg >= 5 ? '#16a34a' : '#dc2626'), borderRadius: 4 }]
+                },
+                options: { plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 10, grid: { color: '#e2e8f0' } }, x: { grid: { display: false } } } }
+            });
+
+            // Table
+            document.getElementById('tableCount').textContent = results.length + ' bản ghi';
+            document.getElementById('statsBody').innerHTML = results.map(r => {
+                const user = DB.getUserById(r.userId);
+                const exam = DB.getExam(r.examId);
+                const pass = r.score >= (exam?.passingScore || 5);
+                return `<tr>
+      <td>${user?.name || '—'}</td>
+      <td><span style="font-size:12px;color:var(--text-muted)">${user?.studentId || '—'}</span></td>
+      <td>${exam?.title || '—'}</td>
+      <td><strong style="color:${Utils.scoreColor(r.score)}">${r.score.toFixed(2)}</strong></td>
+      <td><span class="badge ${pass ? 'badge-green' : 'badge-red'}">${pass ? 'Đạt' : 'Không đạt'}</span></td>
+      <td>${r.duration} phút</td>
+      <td>${Utils.formatDateTime(r.submitTime)}</td>
+    </tr>`;
+            }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted)">Không có dữ liệu</td></tr>';
+        }
+
+        // Export buttons (mock)
+        document.getElementById('exportPdfBtn').addEventListener('click', () => {
+            Utils.toast('Đang xuất báo cáo PDF...', 'warning');
+            setTimeout(() => { window.print(); }, 300);
+        });
+        document.getElementById('exportExcelBtn').addEventListener('click', () => {
+            // Simple CSV export
+            const results = getFilteredResults();
+            const rows = [['Sinh viên', 'Mã SV', 'Kỳ thi', 'Điểm', 'Kết quả', 'Thời gian']];
+            results.forEach(r => {
+                const u = DB.getUserById(r.userId), e = DB.getExam(r.examId);
+                const pass = r.score >= (e?.passingScore || 5);
+                rows.push([u?.name || '', u?.studentId || '', e?.title || '', r.score.toFixed(2), pass ? 'Đạt' : 'Không đạt', r.duration + ' phút']);
+            });
+            const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = 'bao-cao-thi-ptit.csv'; a.click();
+            Utils.toast('Đã xuất file CSV thành công!', 'success');
+        });
+
+        renderStats();
+    </script>
+</body>
+
+</html>

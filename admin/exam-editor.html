@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Kỳ thi — Admin PTIT</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        .step-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            margin-bottom: 28px
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 18px;
+            border-radius: var(--radius);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            flex-shrink: 0
+        }
+
+        .step.active {
+            background: var(--ptit-red-soft);
+            color: var(--ptit-red)
+        }
+
+        .step.done {
+            color: var(--success)
+        }
+
+        .step-num {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            border: 2px solid currentColor;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 800;
+            flex-shrink: 0
+        }
+
+        .step-line {
+            flex: 1;
+            height: 2px;
+            background: var(--border)
+        }
+
+        .step.done .step-line {
+            background: var(--success)
+        }
+
+        .q-item {
+            background: var(--surface2);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            padding: 18px;
+            margin-bottom: 14px;
+            position: relative
+        }
+
+        .q-item-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px
+        }
+
+        .q-item-num {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--ptit-red)
+        }
+
+        .option-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px
+        }
+
+        .option-row .form-control {
+            flex: 1
+        }
+
+        .correct-radio {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--success);
+            flex-shrink: 0;
+            cursor: pointer
+        }
+
+        .add-q-btn {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            text-align: center;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all var(--transition);
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px
+        }
+
+        .add-q-btn:hover {
+            border-color: var(--ptit-red);
+            color: var(--ptit-red);
+            background: var(--ptit-red-soft)
+        }
+
+        .panel {
+            display: none
+        }
+
+        .panel.active {
+            display: block
+        }
+
+        .exam-list-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            transition: background var(--transition)
+        }
+
+        .exam-list-row:hover {
+            background: var(--surface2)
+        }
+
+        .exam-list-row:last-child {
+            border-bottom: none
+        }
+    </style>
+</head>
+
+<body>
+    <!-- TOPBAR -->
+    <div class="topbar">
+        <button class="sidebar-toggle" id="sidebarToggle"><i class="fas fa-bars"></i></button>
+        <a class="topbar-logo" href="dashboard.html" style="text-decoration:none">
+            <div
+                style="width:40px;height:40px;background:var(--ptit-red);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px">
+                P</div>
+            <div>
+                <div class="logo-text">PExam PTIT</div>
+                <div class="logo-sub">Quản lý kỳ thi</div>
+            </div>
+        </a>
+        <div class="topbar-spacer"></div>
+        <div class="topbar-actions">
+            <div class="topbar-avatar" id="userAvatar">AD</div>
+            <button class="btn btn-ghost btn-sm" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Đăng xuất</button>
+        </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+        <nav class="sidebar-nav">
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Tổng quan</div>
+                <a class="sidebar-link" href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Quản lý</div>
+                <a class="sidebar-link active" href="exam-editor.html"><i class="fas fa-file-alt"></i> Quản lý kỳ
+                    thi</a>
+                <a class="sidebar-link" href="users.html"><i class="fas fa-users"></i> Quản lý người dùng</a>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Báo cáo</div>
+                <a class="sidebar-link" href="statistics.html"><i class="fas fa-chart-bar"></i> Thống kê</a>
+                <a class="sidebar-link" href="student-results.html"><i class="fas fa-table"></i> Kết quả SV</a>
+            </div>
+        </nav>
+    </div>
+
+    <!-- MAIN -->
+    <div class="admin-layout">
+        <main class="admin-main">
+            <div class="page-header-row page-header">
+                <div>
+                    <h2>Quản lý Kỳ thi</h2>
+                    <p>Thêm mới, chỉnh sửa và quản lý câu hỏi</p>
+                </div>
+                <button class="btn btn-primary" id="createNewBtn"><i class="fas fa-plus"></i> Tạo kỳ thi mới</button>
+            </div>
+
+            <!-- EXAM LIST PANEL -->
+            <div id="listPanel" class="panel active">
+                <div class="filter-bar mb-4" style="margin-bottom:16px">
+                    <div class="search-input-wrap">
+                        <i class="fas fa-search search-icon"></i>
+                        <input id="examSearch" type="text" class="form-control" placeholder="Tìm kiếm kỳ thi...">
+                    </div>
+                    <select class="form-control" id="examTypeFilter" style="width:160px">
+                        <option value="">Tất cả loại</option>
+                        <option value="practice">Luyện tập</option>
+                        <option value="midterm">Giữa kỳ</option>
+                        <option value="final">Cuối kỳ</option>
+                    </select>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h4><i class="fas fa-list"></i> Danh sách kỳ thi (<span id="examCount">0</span>)</h4>
+                    </div>
+                    <div id="examListContainer"></div>
+                </div>
+            </div>
+
+            <!-- CREATE/EDIT PANEL -->
+            <div id="editorPanel" class="panel">
+                <div class="step-indicator">
+                    <div class="step active" id="step1">
+                        <div class="step-num">1</div> Thông tin chung
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step" id="step2">
+                        <div class="step-num">2</div> Danh sách câu hỏi
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step" id="step3">
+                        <div class="step-num">3</div> Xem lại & Lưu
+                    </div>
+                </div>
+
+                <!-- Step 1: Exam Info -->
+                <div id="s1" class="panel active">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4><i class="fas fa-info-circle"></i> Thông tin kỳ thi</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="grid-2" style="gap:20px">
+                                <div class="form-group">
+                                    <label class="form-label">Tên kỳ thi <span
+                                            style="color:var(--danger)">*</span></label>
+                                    <input id="examName" class="form-control" type="text"
+                                        placeholder="VD: Lập trình Web — Giữa kỳ">
+                                    <span class="form-error" id="examNameErr"></span>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Môn học <span style="color:var(--danger)">*</span></label>
+                                    <input id="examSubject" class="form-control" type="text"
+                                        placeholder="VD: Lập trình Web">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Loại kỳ thi</label>
+                                    <select id="examType" class="form-control">
+                                        <option value="practice">Luyện tập</option>
+                                        <option value="midterm">Giữa kỳ</option>
+                                        <option value="final">Cuối kỳ</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Thời gian làm bài (phút)</label>
+                                    <input id="examDuration" class="form-control" type="number" value="30" min="5">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Loại truy cập</label>
+                                    <select id="examAccess" class="form-control" onchange="toggleSchedule(this.value)">
+                                        <option value="open">Tự do (mở liên tục)</option>
+                                        <option value="scheduled">Theo thời gian cố định</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Điểm đạt (/ 10)</label>
+                                    <input id="examPass" class="form-control" type="number" value="5" min="0" max="10"
+                                        step="0.5">
+                                </div>
+                                <div class="form-group" style="display:flex;align-items:center;gap:10px;margin-top:4px">
+                                    <input type="checkbox" id="allowRetake"
+                                        style="width:16px;height:16px;accent-color:var(--ptit-red);cursor:pointer"
+                                        checked>
+                                    <label for="allowRetake" style="font-size:14px;font-weight:600;cursor:pointer">Cho
+                                        phép thi lại</label>
+                                    <span style="font-size:12px;color:var(--text-muted)">(Sinh viên có thể làm lại bài
+                                        sau khi đã nộp)</span>
+                                </div>
+                            </div>
+                            <div id="scheduleFields" style="display:none">
+                                <div class="grid-2" style="gap:20px">
+                                    <div class="form-group">
+                                        <label class="form-label">Thời gian bắt đầu</label>
+                                        <input id="examStart" class="form-control" type="datetime-local">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Thời gian kết thúc</label>
+                                        <input id="examEnd" class="form-control" type="datetime-local">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Mô tả</label>
+                                <textarea id="examDesc" class="form-control" rows="3"
+                                    placeholder="Mô tả ngắn về nội dung kỳ thi..."></textarea>
+                            </div>
+                            <div class="flex justify-between items-center mt-4" style="margin-top:16px">
+                                <button class="btn btn-ghost" onclick="showList()"><i class="fas fa-arrow-left"></i>
+                                    Quay lại</button>
+                                <button class="btn btn-primary" onclick="goStep2()">Tiếp theo: Câu hỏi <i
+                                        class="fas fa-arrow-right"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Questions -->
+                <div id="s2" class="panel">
+                    <div class="card mb-4" style="margin-bottom:16px">
+                        <div class="card-header">
+                            <h4><i class="fas fa-question-circle"></i> Danh sách câu hỏi (<span id="qCount">0</span>)
+                            </h4>
+                            <div class="flex gap-2">
+                                <button class="btn btn-ghost btn-sm" onclick="showImportModal()"><i
+                                        class="fas fa-file-excel"></i> Nhập từ Excel</button>
+                                <button class="btn btn-primary btn-sm" onclick="addQuestion()"><i
+                                        class="fas fa-plus"></i> Thêm câu</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="questionsList"></div>
+                            <div class="add-q-btn" onclick="addQuestion()">
+                                <i class="fas fa-plus-circle"></i> Thêm câu hỏi mới
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between mt-4" style="margin-top:8px">
+                        <button class="btn btn-ghost" onclick="goStep1()"><i class="fas fa-arrow-left"></i> Thông tin
+                            chung</button>
+                        <button class="btn btn-primary" onclick="goStep3()">Xem lại & Lưu <i
+                                class="fas fa-arrow-right"></i></button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Review -->
+                <div id="s3" class="panel">
+                    <div class="card mb-4" style="margin-bottom:16px">
+                        <div class="card-header">
+                            <h4><i class="fas fa-eye"></i> Xem lại kỳ thi</h4>
+                        </div>
+                        <div class="card-body" id="reviewContent"></div>
+                    </div>
+                    <div class="flex justify-between">
+                        <button class="btn btn-ghost" onclick="goStep2()"><i class="fas fa-arrow-left"></i> Sửa câu
+                            hỏi</button>
+                        <div class="flex gap-3">
+                            <button class="btn btn-outline" onclick="saveExam('draft')"><i class="fas fa-save"></i> Lưu
+                                nháp</button>
+                            <button class="btn btn-primary" onclick="saveExam('open')"><i class="fas fa-check"></i> Xuất
+                                bản</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- IMPORT MODAL -->
+    <div class="modal-overlay" id="importModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-file-excel" style="color:var(--success)"></i> Nhập câu hỏi từ Excel</h3>
+                <button class="modal-close" onclick="Utils.closeModal('importModal')"><i
+                        class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info" style="margin-bottom:16px;">
+                    <i class="fas fa-info-circle"></i> <strong>Hướng dẫn nhập file Excel/CSV:</strong>
+                    <ul style="margin-top:8px;padding-left:20px;font-size:13px">
+                        <li>File phải có cấu trúc gồm 7 cột. Dòng đầu tiên là tiêu đề (sẽ bị bỏ qua).</li>
+                        <li><strong>Cột 1:</strong> Nội dung câu hỏi</li>
+                        <li><strong>Cột 2, 3, 4, 5:</strong> Đáp án A, B, C, D</li>
+                        <li><strong>Cột 6:</strong> Đáp án đúng (Chỉ nhập số từ <strong>1 đến 4</strong>, tương ứng
+                            A,B,C,D)</li>
+                        <li><strong>Cột 7:</strong> Giải thích (Tùy chọn)</li>
+                    </ul>
+                    <div style="margin-top:10px;text-align:center;">
+                        <a href="../OOP_Exam_Template.xlsx" class="btn btn-sm btn-success" download><i
+                                class="fas fa-download"></i> Tải file Excel mẫu</a>
+                    </div>
+                </div>
+                <div style="border:2px dashed var(--border);border-radius:var(--radius);padding:32px;text-align:center;cursor:pointer"
+                    id="dropZone">
+                    <i class="fas fa-cloud-upload-alt"
+                        style="font-size:36px;color:var(--text-light);display:block;margin-bottom:12px"></i>
+                    <p style="margin-bottom:8px">Kéo thả file Excel vào đây</p>
+                    <span style="font-size:12px;color:var(--text-light)">hoặc</span><br>
+                    <button class="btn btn-outline btn-sm mt-3" style="margin-top:12px"
+                        onclick="document.getElementById('fileInput').click()"><i class="fas fa-folder-open"></i> Chọn
+                        file</button>
+                    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none">
+                </div>
+                <p id="importMsg" style="margin-top:12px;font-size:13px;text-align:center"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="Utils.closeModal('importModal')">Huỷ</button>
+                <button class="btn btn-primary" onclick="importMockData()"><i class="fas fa-magic"></i> Nhập dữ liệu
+                    mẫu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DELETE CONFIRM -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 style="color:var(--danger)"><i class="fas fa-trash"></i> Xác nhận xoá</h3>
+            </div>
+            <div class="modal-body">
+                <p>Bạn có chắc muốn xoá kỳ thi <strong id="deleteExamName"></strong>? Hành động này không thể hoàn tác.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="Utils.closeModal('deleteModal')">Huỷ</button>
+                <button class="btn btn-danger" id="confirmDeleteBtn">Xoá</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/data.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        const session = Auth.requireAuthAdmin();
+        document.getElementById('userAvatar').textContent = session.avatar;
+        Utils.initSidebar();
+        document.getElementById('logoutBtn').addEventListener('click', () => { Auth.logout(); location.href = 'login.html'; });
+        document.getElementById('createNewBtn').addEventListener('click', () => { currentExam = null; initEditor(); showEditor(); });
+
+        let currentExam = null;
+        let questions = [];
+        let deleteTarget = null;
+
+        // ── LIST ──────────────────────────────────────────────────
+        function renderList() {
+            const q = document.getElementById('examSearch').value.toLowerCase();
+            const t = document.getElementById('examTypeFilter').value;
+            let exams = DB.exams.filter(e =>
+                (!q || e.title.toLowerCase().includes(q) || e.subject.toLowerCase().includes(q)) &&
+                (!t || e.type === t)
+            );
+            document.getElementById('examCount').textContent = exams.length;
+            document.getElementById('examListContainer').innerHTML = exams.length === 0
+                ? `<div class="empty-state"><i class="fas fa-folder-open"></i><h3>Không có kỳ thi</h3><p>Tạo kỳ thi đầu tiên của bạn.</p></div>`
+                : exams.map(e => {
+                    const rCount = DB.getResultsByExam(e.id).length;
+                    return `<div class="exam-list-row">
+        <div class="flex-1">
+          <div class="fw-700">${e.title}</div>
+          <div class="flex gap-2 mt-1">
+            <span class="badge ${Utils.typeBadge(e.type)}">${Utils.typeLabel(e.type)}</span>
+            <span class="badge ${Utils.statusBadge(e.status)}">${Utils.statusLabel(e.status)}</span>
+            <span class="fs-12 text-muted"><i class="fas fa-question-circle"></i> ${e.questionCount} câu</span>
+            <span class="fs-12 text-muted"><i class="fas fa-clock"></i> ${e.duration} phút</span>
+            <span class="fs-12 text-muted"><i class="fas fa-users"></i> ${rCount} lượt</span>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button class="btn btn-ghost btn-sm" onclick="editExam('${e.id}')"><i class="fas fa-edit"></i> Sửa</button>
+          <button class="btn btn-danger btn-sm" onclick="confirmDelete('${e.id}')"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>`;
+                }).join('');
+        }
+        document.getElementById('examSearch').addEventListener('input', renderList);
+        document.getElementById('examTypeFilter').addEventListener('change', renderList);
+
+        function showList() { document.getElementById('listPanel').classList.add('active'); document.getElementById('editorPanel').classList.remove('active'); renderList(); }
+        function showEditor() { document.getElementById('listPanel').classList.remove('active'); document.getElementById('editorPanel').classList.add('active'); }
+
+        function editExam(id) {
+            currentExam = DB.getExam(id);
+            questions = (DB.getQuestions(id) || []).map(q => ({ ...q, options: [...q.options] }));
+            document.getElementById('examName').value = currentExam.title;
+            document.getElementById('examSubject').value = currentExam.subject;
+            document.getElementById('examType').value = currentExam.type;
+            document.getElementById('examDuration').value = currentExam.duration;
+            document.getElementById('examAccess').value = currentExam.status === 'scheduled' ? 'scheduled' : 'open';
+            document.getElementById('examPass').value = currentExam.passingScore;
+            document.getElementById('examDesc').value = currentExam.description;
+            document.getElementById('allowRetake').checked = currentExam.allowRetake !== false;
+            renderQList();
+            showEditor();
+            goStep1();
+        }
+
+        function confirmDelete(id) {
+            deleteTarget = id;
+            document.getElementById('deleteExamName').textContent = DB.getExam(id)?.title;
+            Utils.openModal('deleteModal');
+        }
+        document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
+            if (deleteTarget) {
+                const idx = DB.exams.findIndex(e => e.id === deleteTarget);
+                if (idx >= 0) {
+                    DB.exams.splice(idx, 1);
+                    delete DB.questions[deleteTarget];
+                    DB.save();
+                }
+            }
+            Utils.closeModal('deleteModal'); renderList(); Utils.toast('Đã xoá kỳ thi', 'success');
+        });
+
+        // ── EDITOR ────────────────────────────────────────────────
+        function initEditor() {
+            questions = [];
+            document.getElementById('examName').value = '';
+            document.getElementById('examSubject').value = '';
+            document.getElementById('examType').value = 'practice';
+            document.getElementById('examDuration').value = '30';
+            document.getElementById('examAccess').value = 'open';
+            document.getElementById('examPass').value = '5';
+            document.getElementById('examDesc').value = '';
+            renderQList(); goStep1();
+        }
+
+        function toggleSchedule(val) { document.getElementById('scheduleFields').style.display = val === 'scheduled' ? 'block' : 'none'; }
+
+        function setStep(n) {
+            [1, 2, 3].forEach(i => {
+                document.getElementById('step' + i).classList.toggle('active', i === n);
+                document.getElementById('s' + i).classList.toggle('active', i === n);
+            });
+        }
+        function goStep1() { setStep(1); }
+        function goStep2() {
+            if (!document.getElementById('examName').value.trim()) { Utils.toast('Vui lòng nhập tên kỳ thi', 'warning'); return; }
+            setStep(2); renderQList();
+        }
+        function goStep3() { setStep(3); buildReview(); }
+
+        function renderQList() {
+            document.getElementById('qCount').textContent = questions.length;
+            const letters = ['A', 'B', 'C', 'D'];
+            document.getElementById('questionsList').innerHTML = questions.map((q, qi) =>
+                `<div class="q-item" data-qi="${qi}">
+      <div class="q-item-header">
+        <span class="q-item-num">Câu ${qi + 1}</span>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="removeQ(${qi})"><i class="fas fa-trash"></i></button>
+      </div>
+      <div class="form-group mb-3">
+        <input class="form-control" type="text" value="${q.text}" placeholder="Nội dung câu hỏi..." oninput="questions[${qi}].text=this.value">
+      </div>
+      ${q.options.map((opt, oi) =>
+                    `<div class="option-row">
+          <input type="radio" name="correct_${qi}" class="correct-radio" ${q.correct === oi ? 'checked' : ''} title="Đánh dấu đáp án đúng" onchange="questions[${qi}].correct=${oi}">
+          <input class="form-control" type="text" value="${opt}" placeholder="${letters[oi]}..." oninput="questions[${qi}].options[${oi}]=this.value">
+        </div>`
+                ).join('')}
+      <div style="font-size:11px;color:var(--text-light);margin-top:6px"><i class="fas fa-info-circle"></i> Tích vào ô radio để chọn đáp án đúng</div>
+    </div>`
+            ).join('');
+        }
+
+        function addQuestion() {
+            questions.push({ id: 'q' + Date.now(), text: '', options: ['', '', '', ''], correct: 0, explanation: '' });
+            renderQList();
+            document.getElementById('questionsList').lastElementChild?.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function removeQ(idx) {
+            questions.splice(idx, 1); renderQList();
+        }
+
+        function buildReview() {
+            const name = document.getElementById('examName').value;
+            const type = document.getElementById('examType').value;
+            const dur = document.getElementById('examDuration').value;
+            document.getElementById('reviewContent').innerHTML = `
+    <div class="grid-2 mb-4" style="margin-bottom:20px">
+      <div><div class="fs-12 text-muted fw-700 mb-1">Tên kỳ thi</div><div class="fw-700">${name}</div></div>
+      <div><div class="fs-12 text-muted fw-700 mb-1">Loại</div><span class="badge ${Utils.typeBadge(type)}">${Utils.typeLabel(type)}</span></div>
+      <div><div class="fs-12 text-muted fw-700 mb-1">Thời gian</div><div>${dur} phút</div></div>
+      <div><div class="fs-12 text-muted fw-700 mb-1">Số câu hỏi</div><div>${questions.length}</div></div>
+    </div>
+    <div class="alert ${questions.length > 0 ? 'alert-success' : 'alert-warning'}">
+      <i class="fas fa-${questions.length > 0 ? 'check-circle' : 'exclamation-triangle'}"></i>
+      ${questions.length > 0 ? `${questions.length} câu hỏi đã sẵn sàng.` : 'Chưa có câu hỏi! Bổ sung câu hỏi ở bước 2.'}
+    </div>`;
+        }
+
+        function saveExam(status) {
+            const name = document.getElementById('examName').value.trim();
+            if (!name) { Utils.toast('Thiếu tên kỳ thi', 'danger'); return; }
+            if (currentExam) {
+                currentExam.title = name;
+                currentExam.status = status;
+                currentExam.questionCount = questions.length;
+                DB.questions[currentExam.id] = questions;
+            } else {
+                const newExam = {
+                    id: 'ex' + Date.now(),
+                    title: name,
+                    subject: document.getElementById('examSubject').value,
+                    description: document.getElementById('examDesc').value,
+                    type: document.getElementById('examType').value,
+                    status,
+                    duration: +document.getElementById('examDuration').value,
+                    questionCount: questions.length,
+                    totalScore: 10, passingScore: +document.getElementById('examPass').value,
+                    allowRetake: document.getElementById('allowRetake').checked,
+                    createdBy: 'admin', createdAt: new Date().toISOString().split('T')[0], attempts: 0
+                };
+                DB.exams.push(newExam);
+                DB.questions[newExam.id] = questions;
+            }
+            if (currentExam) currentExam.allowRetake = document.getElementById('allowRetake').checked;
+            DB.save();
+            Utils.toast(status === 'open' ? 'Đã xuất bản kỳ thi!' : 'Đã lưu nháp!', 'success');
+            showList();
+        }
+
+        function showImportModal() { Utils.openModal('importModal'); }
+        function importMockData() {
+            const sampleQs = [
+                { id: 'q1', text: 'Câu hỏi mẫu 1: HTML viết tắt của?', options: ['HyperText Markup Language', 'High Tech Modern Language', 'Hyper Transfer Model Logic', 'HyperText Modern Linking'], correct: 0, explanation: 'HTML là HyperText Markup Language.' },
+                { id: 'q2', text: 'Câu hỏi mẫu 2: CSS dùng để làm gì?', options: ['Xử lý logic', 'Định dạng giao diện', 'Kết nối database', 'Tạo animation JS'], correct: 1, explanation: 'CSS (Cascading Style Sheets) dùng để định dạng và trang trí giao diện web.' },
+            ];
+            questions.push(...sampleQs.map(q => ({ ...q, id: 'import_' + Date.now() + '_' + Math.random(), options: [...q.options] })));
+            renderQList();
+            Utils.closeModal('importModal');
+            Utils.toast(`Đã nhập ${sampleQs.length} câu hỏi mẫu`, 'success');
+        }
+
+        document.getElementById('fileInput').addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (evt) {
+                const lines = evt.target.result.split('\n').filter(l => l.trim());
+                const imported = [];
+                lines.slice(1).forEach((line, i) => { // skip header
+                    const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+                    if (cols.length >= 6) {
+                        const correctIdx = parseInt(cols[5]) - 1; // 1-based to 0-based
+                        imported.push({
+                            id: 'imp_' + Date.now() + '_' + i,
+                            text: cols[0], options: [cols[1], cols[2], cols[3], cols[4]],
+                            correct: isNaN(correctIdx) ? 0 : correctIdx, explanation: cols[6] || ''
+                        });
+                    }
+                });
+                if (imported.length) {
+                    questions.push(...imported); renderQList();
+                    Utils.closeModal('importModal');
+                    Utils.toast(`Đã nhập ${imported.length} câu hỏi từ CSV`, 'success');
+                } else {
+                    document.getElementById('importMsg').textContent = 'File CSV không đúng format. Xem hướng dẫn ở trên.';
+                }
+            };
+            if (file.name.endsWith('.csv')) { reader.readAsText(file); }
+            else { document.getElementById('importMsg').textContent = `Đã chọn: ${file.name} — Chỉ hỗ trợ CSV. Nhấn "Nhập dữ liệu mẫu" để thử với dữ liệu mẫu.`; }
+        });
+
+        renderList();
+    </script>
+</body>
+
+</html>
