@@ -651,6 +651,7 @@ select.form-control {
 
 .kpi-card:hover {
   box-shadow: var(--shadow);
+  transform: translateY(-4px);
 }
 
 .kpi-icon {
@@ -1013,6 +1014,7 @@ select.form-control {
 
 .exam-card:hover {
   box-shadow: var(--shadow);
+  transform: translateY(-4px);
 }
 
 .exam-card-top {

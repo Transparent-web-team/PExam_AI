@@ -227,30 +227,37 @@
         Utils.initSidebar();
         document.getElementById('logoutBtn').addEventListener('click', () => { Auth.logout(); location.href = 'login.html'; });
 
-        // Populate exam filter
-        DB.exams.forEach(e => {
-            const opt = document.createElement('option');
-            opt.value = e.id; opt.textContent = e.title;
-            document.getElementById('filterExam').appendChild(opt);
-        });
-
         let trendChartObj = null, passChartObj = null, studentChartObj = null;
+
+        async function initPage() {
+            await DB.load();
+            await DB.loadAllResults();
+
+            // Populate exam filter
+            DB.exams.forEach(e => {
+                const opt = document.createElement('option');
+                opt.value = e.id; opt.textContent = e.title;
+                document.getElementById('filterExam').appendChild(opt);
+            });
+
+            renderStats();
+        }
 
         function getFilteredResults() {
             const examId = document.getElementById('filterExam').value;
             const type = document.getElementById('filterType').value;
-            return DB.results.filter(r => {
-                if (examId && r.examId !== examId) return false;
-                if (type) { const ex = DB.getExam(r.examId); if (!ex || ex.type !== type) return false; }
+            return (DB.results || []).filter(r => {
+                if (examId && String(r.examId || r.exam_id) !== String(examId)) return false;
+                if (type) { const ex = DB.getExam(r.examId || r.exam_id); if (!ex || ex.type !== type) return false; }
                 return true;
             });
         }
 
         function renderStats() {
             const results = getFilteredResults();
-            const scores = results.map(r => r.score);
+            const scores = results.map(r => r.score || 0);
             const avg = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
-            const passCount = results.filter(r => { const ex = DB.getExam(r.examId); return r.score >= (ex?.passingScore || 5); }).length;
+            const passCount = results.filter(r => { const ex = DB.getExam(r.examId || r.exam_id); return (r.score || 0) >= (ex?.passingScore || 5); }).length;
             const passRate = results.length ? Math.round(passCount / results.length * 100) : 0;
             const maxScore = scores.length ? Math.max(...scores) : 0;
             const minScore = scores.length ? Math.min(...scores) : 0;
@@ -265,8 +272,12 @@
 
             // Trend chart (avg per exam)
             const examScores = {};
-            results.forEach(r => { if (!examScores[r.examId]) examScores[r.examId] = []; examScores[r.examId].push(r.score); });
-            const examLabels = Object.keys(examScores).map(id => DB.getExam(id)?.title?.substring(0, 20) + '...' || id);
+            results.forEach(r => { 
+                const eId = r.examId || r.exam_id;
+                if (!examScores[eId]) examScores[eId] = []; 
+                examScores[eId].push(r.score || 0); 
+            });
+            const examLabels = Object.keys(examScores).map(id => (DB.getExam(id)?.title || '—').substring(0, 20) + '...');
             const examAvgs = Object.keys(examScores).map(id => +(examScores[id].reduce((a, b) => a + b, 0) / examScores[id].length).toFixed(2));
             if (trendChartObj) trendChartObj.destroy();
             trendChartObj = new Chart(document.getElementById('trendChart'), {
@@ -306,7 +317,7 @@
 
             // Student avg chart (top 10)
             const studentMap = {};
-            results.forEach(r => { if (!studentMap[r.userId]) studentMap[r.userId] = []; studentMap[r.userId].push(r.score); });
+            results.forEach(r => { const uid = r.userId || r.user_id; if (!studentMap[uid]) studentMap[uid] = []; studentMap[uid].push(r.score || 0); });
             const studentAvgs = Object.entries(studentMap).map(([uid, ss]) => ({
                 name: DB.getUserById(uid)?.name || uid, avg: +(ss.reduce((a, b) => a + b, 0) / ss.length).toFixed(2)
             })).sort((a, b) => b.avg - a.avg).slice(0, 10);
@@ -323,17 +334,17 @@
             // Table
             document.getElementById('tableCount').textContent = results.length + ' bản ghi';
             document.getElementById('statsBody').innerHTML = results.map(r => {
-                const user = DB.getUserById(r.userId);
-                const exam = DB.getExam(r.examId);
-                const pass = r.score >= (exam?.passingScore || 5);
+                const user = DB.getUserById(r.userId || r.user_id);
+                const exam = DB.getExam(r.examId || r.exam_id);
+                const pass = (r.score || 0) >= (exam?.passingScore || 5);
                 return `<tr>
-      <td>${user?.name || '—'}</td>
+      <td>${r.user_name || user?.name || '—'}</td>
       <td><span style="font-size:12px;color:var(--text-muted)">${user?.studentId || '—'}</span></td>
-      <td>${exam?.title || '—'}</td>
-      <td><strong style="color:${Utils.scoreColor(r.score)}">${r.score.toFixed(2)}</strong></td>
+      <td>${r.exam_title || exam?.title || '—'}</td>
+      <td><strong style="color:${Utils.scoreColor(r.score || 0)}">${(r.score || 0).toFixed(2)}</strong></td>
       <td><span class="badge ${pass ? 'badge-green' : 'badge-red'}">${pass ? 'Đạt' : 'Không đạt'}</span></td>
-      <td>${r.duration} phút</td>
-      <td>${Utils.formatDateTime(r.submitTime)}</td>
+      <td>${r.duration || 0} phút</td>
+      <td>${Utils.formatDateTime(r.submit_time || r.submitTime)}</td>
     </tr>`;
             }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted)">Không có dữ liệu</td></tr>';
         }
@@ -348,9 +359,9 @@
             const results = getFilteredResults();
             const rows = [['Sinh viên', 'Mã SV', 'Kỳ thi', 'Điểm', 'Kết quả', 'Thời gian']];
             results.forEach(r => {
-                const u = DB.getUserById(r.userId), e = DB.getExam(r.examId);
-                const pass = r.score >= (e?.passingScore || 5);
-                rows.push([u?.name || '', u?.studentId || '', e?.title || '', r.score.toFixed(2), pass ? 'Đạt' : 'Không đạt', r.duration + ' phút']);
+                const u = DB.getUserById(r.userId || r.user_id), e = DB.getExam(r.examId || r.exam_id);
+                const pass = (r.score || 0) >= (e?.passingScore || 5);
+                rows.push([r.user_name || u?.name || '', u?.studentId || '', r.exam_title || e?.title || '', (r.score || 0).toFixed(2), pass ? 'Đạt' : 'Không đạt', (r.duration || 0) + ' phút']);
             });
             const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
             const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
@@ -359,7 +370,7 @@
             Utils.toast('Đã xuất file CSV thành công!', 'success');
         });
 
-        renderStats();
+        initPage();
     </script>
 </body>
 

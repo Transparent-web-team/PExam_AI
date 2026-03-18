@@ -1,0 +1,6 @@
+Nội dung câu hỏi,Đáp án A,Đáp án B,Đáp án C,Đáp án D,Đáp án đúng (1-4),Giải thích
+HTML viết tắt của gì?,HyperText Markup Language,High Tech Modern Language,Hyper Transfer Model Logic,HyperText Modern Linking,1,HTML là HyperText Markup Language - ngôn ngữ đánh dấu siêu văn bản.
+CSS dùng để làm gì?,Xử lý logic back-end,Định dạng và trang trí giao diện web,Kết nối cơ sở dữ liệu,Tạo animation phức tạp,2,CSS (Cascading Style Sheets) dùng để định dạng giao diện trang web.
+JavaScript là ngôn ngữ lập trình loại nào?,Compiled,Interpreted,Assembly,Machine code,2,JavaScript là ngôn ngữ thông dịch (interpreted) chạy trực tiếp trên trình duyệt.
+Lệnh nào hiển thị hộp thoại thông báo?,console.log(),document.write(),alert(),prompt(),3,Hàm alert() hiển thị hộp thoại pop-up với nội dung thông báo.
+Thẻ HTML nào tạo đoạn văn bản?,<span>,<p>,<div>,<br>,2,Thẻ <p> (paragraph) dùng để tạo đoạn văn bản trong HTML.

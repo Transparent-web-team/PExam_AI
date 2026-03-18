@@ -391,8 +391,8 @@
                         <li><strong>Cột 7:</strong> Giải thích (Tùy chọn)</li>
                     </ul>
                     <div style="margin-top:10px;text-align:center;">
-                        <a href="../OOP_Exam_Template.xlsx" class="btn btn-sm btn-success" download><i
-                                class="fas fa-download"></i> Tải file Excel mẫu</a>
+                        <a href="../exam_template.csv" class="btn btn-sm btn-success" download="exam_template.csv"><i
+                                class="fas fa-download"></i> Tải file mẫu (CSV)</a>
                     </div>
                 </div>
                 <div style="border:2px dashed var(--border);border-radius:var(--radius);padding:32px;text-align:center;cursor:pointer"
@@ -446,29 +446,34 @@
         let currentExam = null;
         let questions = [];
         let deleteTarget = null;
+        let allExams = [];
+
+        async function initPage() {
+            await DB.load();
+            allExams = DB.exams || [];
+            renderList();
+        }
 
         // ── LIST ──────────────────────────────────────────────────
         function renderList() {
             const q = document.getElementById('examSearch').value.toLowerCase();
             const t = document.getElementById('examTypeFilter').value;
-            let exams = DB.exams.filter(e =>
-                (!q || e.title.toLowerCase().includes(q) || e.subject.toLowerCase().includes(q)) &&
+            let exams = allExams.filter(e =>
+                (!q || e.title.toLowerCase().includes(q) || (e.subject || '').toLowerCase().includes(q)) &&
                 (!t || e.type === t)
             );
             document.getElementById('examCount').textContent = exams.length;
             document.getElementById('examListContainer').innerHTML = exams.length === 0
                 ? `<div class="empty-state"><i class="fas fa-folder-open"></i><h3>Không có kỳ thi</h3><p>Tạo kỳ thi đầu tiên của bạn.</p></div>`
                 : exams.map(e => {
-                    const rCount = DB.getResultsByExam(e.id).length;
                     return `<div class="exam-list-row">
         <div class="flex-1">
           <div class="fw-700">${e.title}</div>
           <div class="flex gap-2 mt-1">
             <span class="badge ${Utils.typeBadge(e.type)}">${Utils.typeLabel(e.type)}</span>
             <span class="badge ${Utils.statusBadge(e.status)}">${Utils.statusLabel(e.status)}</span>
-            <span class="fs-12 text-muted"><i class="fas fa-question-circle"></i> ${e.questionCount} câu</span>
+            <span class="fs-12 text-muted"><i class="fas fa-question-circle"></i> ${e.question_count || e.questionCount || 0} câu</span>
             <span class="fs-12 text-muted"><i class="fas fa-clock"></i> ${e.duration} phút</span>
-            <span class="fs-12 text-muted"><i class="fas fa-users"></i> ${rCount} lượt</span>
           </div>
         </div>
         <div class="flex gap-2">
@@ -481,20 +486,37 @@
         document.getElementById('examSearch').addEventListener('input', renderList);
         document.getElementById('examTypeFilter').addEventListener('change', renderList);
 
-        function showList() { document.getElementById('listPanel').classList.add('active'); document.getElementById('editorPanel').classList.remove('active'); renderList(); }
+        function showList() { document.getElementById('listPanel').classList.add('active'); document.getElementById('editorPanel').classList.remove('active'); initPage(); }
         function showEditor() { document.getElementById('listPanel').classList.remove('active'); document.getElementById('editorPanel').classList.add('active'); }
 
-        function editExam(id) {
-            currentExam = DB.getExam(id);
-            questions = (DB.getQuestions(id) || []).map(q => ({ ...q, options: [...q.options] }));
+        async function editExam(id) {
+            Utils.toast('Đang tải dữ liệu kỳ thi...', 'info');
+            const examDetails = await DB.getExamDetails(id);
+            if (!examDetails) {
+                Utils.toast('Lỗi khi tải kỳ thi', 'danger');
+                return;
+            }
+            
+            currentExam = examDetails;
+            questions = (examDetails.questions || []).map(q => ({ 
+                ...q, 
+                options: (q.options || []).map(o => o.content),
+                correct: (q.options || []).findIndex(o => o.is_correct)
+            }));
+            
             document.getElementById('examName').value = currentExam.title;
-            document.getElementById('examSubject').value = currentExam.subject;
-            document.getElementById('examType').value = currentExam.type;
-            document.getElementById('examDuration').value = currentExam.duration;
+            document.getElementById('examSubject').value = currentExam.subject || '';
+            document.getElementById('examType').value = currentExam.type || 'practice';
+            document.getElementById('examDuration').value = currentExam.duration || 30;
             document.getElementById('examAccess').value = currentExam.status === 'scheduled' ? 'scheduled' : 'open';
-            document.getElementById('examPass').value = currentExam.passingScore;
-            document.getElementById('examDesc').value = currentExam.description;
-            document.getElementById('allowRetake').checked = currentExam.allowRetake !== false;
+            document.getElementById('examPass').value = currentExam.passing_score || currentExam.passingScore || 5;
+            document.getElementById('examDesc').value = currentExam.description || '';
+            document.getElementById('allowRetake').checked = currentExam.allow_retake || currentExam.allowRetake !== false;
+            
+            if (currentExam.start_time) document.getElementById('examStart').value = new Date(currentExam.start_time).toISOString().slice(0, 16);
+            if (currentExam.end_time) document.getElementById('examEnd').value = new Date(currentExam.end_time).toISOString().slice(0, 16);
+            toggleSchedule(document.getElementById('examAccess').value);
+            
             renderQList();
             showEditor();
             goStep1();
@@ -502,19 +524,24 @@
 
         function confirmDelete(id) {
             deleteTarget = id;
-            document.getElementById('deleteExamName').textContent = DB.getExam(id)?.title;
+            const exName = allExams.find(e => e.id === id || e.id === Number(id))?.title;
+            document.getElementById('deleteExamName').textContent = exName || '';
             Utils.openModal('deleteModal');
         }
-        document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
+        document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
             if (deleteTarget) {
-                const idx = DB.exams.findIndex(e => e.id === deleteTarget);
-                if (idx >= 0) {
-                    DB.exams.splice(idx, 1);
-                    delete DB.questions[deleteTarget];
-                    DB.save();
+                document.getElementById('confirmDeleteBtn').disabled = true;
+                const result = await DB.deleteExam(deleteTarget);
+                document.getElementById('confirmDeleteBtn').disabled = false;
+                
+                if (result) {
+                    Utils.toast('Đã xoá kỳ thi', 'success');
+                    initPage();
+                } else {
+                    Utils.toast('Lỗi khi xoá', 'danger');
                 }
             }
-            Utils.closeModal('deleteModal'); renderList(); Utils.toast('Đã xoá kỳ thi', 'success');
+            Utils.closeModal('deleteModal');
         });
 
         // ── EDITOR ────────────────────────────────────────────────
@@ -595,34 +622,59 @@
     </div>`;
         }
 
-        function saveExam(status) {
+        async function saveExam(status) {
             const name = document.getElementById('examName').value.trim();
             if (!name) { Utils.toast('Thiếu tên kỳ thi', 'danger'); return; }
+            
+            const examData = {
+                title: name,
+                subject: document.getElementById('examSubject').value,
+                description: document.getElementById('examDesc').value,
+                type: document.getElementById('examType').value,
+                status: document.getElementById('examAccess').value === 'scheduled' ? 'scheduled' : status,
+                duration: +document.getElementById('examDuration').value,
+                passingScore: +document.getElementById('examPass').value,
+                allowRetake: document.getElementById('allowRetake').checked,
+                startTime: document.getElementById('examStart').value || null,
+                endTime: document.getElementById('examEnd').value || null,
+                questionCount: questions.length
+            };
+            
+            // map options back if needed for backend
+            const payloadQuestions = questions.map(q => ({
+                content: q.text !== undefined && q.text !== '' ? q.text : (q.content || 'Câu hỏi chưa có nội dung'),
+                explanation: q.explanation || '',
+                options: q.options.map((opt, i) => ({
+                    content: opt || `Đáp án ${i + 1}`,
+                    is_correct: i === q.correct ? 1 : 0
+                }))
+            }));
+
+            let savedExamId = currentExam ? currentExam.id : null;
+            
+            // Save Exam Info
             if (currentExam) {
-                currentExam.title = name;
-                currentExam.status = status;
-                currentExam.questionCount = questions.length;
-                DB.questions[currentExam.id] = questions;
+                const uRes = await DB.updateExam(currentExam.id, examData);
+                if (!uRes) { Utils.toast('Lưu thông tin thất bại', 'danger'); return; }
             } else {
-                const newExam = {
-                    id: 'ex' + Date.now(),
-                    title: name,
-                    subject: document.getElementById('examSubject').value,
-                    description: document.getElementById('examDesc').value,
-                    type: document.getElementById('examType').value,
-                    status,
-                    duration: +document.getElementById('examDuration').value,
-                    questionCount: questions.length,
-                    totalScore: 10, passingScore: +document.getElementById('examPass').value,
-                    allowRetake: document.getElementById('allowRetake').checked,
-                    createdBy: 'admin', createdAt: new Date().toISOString().split('T')[0], attempts: 0
-                };
-                DB.exams.push(newExam);
-                DB.questions[newExam.id] = questions;
+                const cRes = await DB.createExam(examData);
+                if (cRes && cRes.id) {
+                    savedExamId = cRes.id;
+                } else {
+                    Utils.toast('Tạo kỳ thi thất bại', 'danger'); return; 
+                }
             }
-            if (currentExam) currentExam.allowRetake = document.getElementById('allowRetake').checked;
-            DB.save();
-            Utils.toast(status === 'open' ? 'Đã xuất bản kỳ thi!' : 'Đã lưu nháp!', 'success');
+            
+            // Save Questions
+            if (savedExamId) {
+                const qRes = await DB.upsertExamQuestions(savedExamId, payloadQuestions);
+                if (!qRes) {
+                    Utils.toast('Đã lưu kỳ thi nhưng lỗi lưu câu hỏi', 'warning');
+                } else {
+                    Utils.toast(status === 'open' ? 'Đã xuất bản kỳ thi!' : 'Đã lưu kỳ thi!', 'success');
+                }
+            }
+            
             showList();
         }
 
@@ -668,7 +720,7 @@
             else { document.getElementById('importMsg').textContent = `Đã chọn: ${file.name} — Chỉ hỗ trợ CSV. Nhấn "Nhập dữ liệu mẫu" để thử với dữ liệu mẫu.`; }
         });
 
-        renderList();
+        initPage();
     </script>
 </body>
 

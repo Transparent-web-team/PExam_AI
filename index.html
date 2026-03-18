@@ -194,12 +194,12 @@
             </div>
             <span class="form-error" id="loginPasswordErr"></span>
           </div>
-          <div class="flex justify-between items-center mb-3" style="margin-bottom:20px">
+          <div class="flex justify-between items-center mb-3" style="margin-bottom:20px;flex-wrap:wrap;gap:10px">
             <label
               style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text-muted)">
               <input type="checkbox" id="rememberMe"> Ghi nhớ đăng nhập
             </label>
-            <a href="#" style="font-size:13px;color:var(--ptit-red);font-weight:600">Quên mật khẩu?</a>
+            <a href="#" style="font-size:13px;color:var(--ptit-red);font-weight:600" onclick="handleForgotPassword(event)">Quên mật khẩu?</a>
           </div>
           <button class="btn btn-primary w-100 btn-lg" id="loginBtn">
             <i class="fas fa-sign-in-alt"></i> Đăng nhập
@@ -318,6 +318,12 @@
     }
     document.querySelectorAll('.auth-tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
 
+    // Forgot password
+    function handleForgotPassword(e) {
+      e.preventDefault();
+      showAlert('loginAlert', 'Tính năng đang được phát triển. Vui lòng liên hệ Quản trị viên để đặt lại mật khẩu của bạn!', 'warning');
+    }
+
     // Password toggles
     function pwToggle(inputId, iconId) {
       const inp = document.getElementById(inputId);
@@ -355,7 +361,7 @@
     function clearAlert(id) { document.getElementById(id).innerHTML = ''; }
 
     // LOGIN
-    document.getElementById('loginBtn').addEventListener('click', () => {
+    document.getElementById('loginBtn').addEventListener('click', async () => {
       clearErrors(['loginUsernameErr', 'loginPasswordErr']); clearAlert('loginAlert');
       const u = document.getElementById('loginUsername').value.trim();
       const p = document.getElementById('loginPassword').value;
@@ -363,23 +369,23 @@
       if (!u) { showError('loginUsername', 'loginUsernameErr', 'Vui lòng nhập tên đăng nhập.'); valid = false; }
       if (!p) { showError('loginPassword', 'loginPasswordErr', 'Vui lòng nhập mật khẩu.'); valid = false; }
       if (!valid) return;
+      
       const btn = document.getElementById('loginBtn');
       btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang đăng nhập...';
-      setTimeout(() => {
-        const res = Auth.login(u, p);
-        if (res.success) {
-          showAlert('loginAlert', 'Đăng nhập thành công! Đang chuyển trang...', 'success');
-          setTimeout(() => { window.location.href = res.user.role === 'admin' ? 'admin/dashboard.html' : 'user/dashboard.html'; }, 800);
-        } else {
-          showAlert('loginAlert', res.error);
-          btn.disabled = false; btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Đăng nhập';
-        }
-      }, 600);
+      
+      const res = await Auth.login(u, p);
+      if (res.success) {
+        showAlert('loginAlert', 'Đăng nhập thành công! Đang chuyển trang...', 'success');
+        setTimeout(() => { window.location.href = res.user.role === 'admin' ? 'admin/dashboard.html' : 'user/dashboard.html'; }, 800);
+      } else {
+        showAlert('loginAlert', res.error);
+        btn.disabled = false; btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Đăng nhập';
+      }
     });
     document.getElementById('loginPassword').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('loginBtn').click(); });
 
     // REGISTER
-    document.getElementById('registerBtn').addEventListener('click', () => {
+    document.getElementById('registerBtn').addEventListener('click', async () => {
       clearErrors(['regNameErr', 'regUsernameErr', 'regEmailErr', 'regPasswordErr', 'regConfirmErr']); clearAlert('registerAlert');
       const name = document.getElementById('regName').value.trim();
       const u = document.getElementById('regUsername').value.trim();
@@ -387,22 +393,29 @@
       const pw = document.getElementById('regPassword').value;
       const cpw = document.getElementById('regConfirm').value;
 
-      const res = Auth.register(u, email, pw, cpw, name);
+      let valid = true;
+      if (!name || name.length < 2) { showError('regName', 'regNameErr', 'Vui lòng nhập họ và tên (ít nhất 2 ký tự).'); valid = false; }
+      if (!u || u.length < 4) { showError('regUsername', 'regUsernameErr', 'Tên đăng nhập phải ít nhất 4 ký tự.'); valid = false; }
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showError('regEmail', 'regEmailErr', 'Email không hợp lệ.'); valid = false; }
+      if (!pw || pw.length < 6) { showError('regPassword', 'regPasswordErr', 'Mật khẩu phải ít nhất 6 ký tự.'); valid = false; }
+      if (pw !== cpw) { showError('regConfirm', 'regConfirmErr', 'Mật khẩu xác nhận không khớp.'); valid = false; }
 
-      if (!name || name.length < 2) { showError('regName', 'regNameErr', 'Vui lòng nhập họ và tên (ít nhất 2 ký tự).'); }
-      if (!u || u.length < 4) { showError('regUsername', 'regUsernameErr', 'Tên đăng nhập phải ít nhất 4 ký tự.'); }
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showError('regEmail', 'regEmailErr', 'Email không hợp lệ.'); }
-      if (!pw || pw.length < 6) { showError('regPassword', 'regPasswordErr', 'Mật khẩu phải ít nhất 6 ký tự.'); }
-      if (pw !== cpw) { showError('regConfirm', 'regConfirmErr', 'Mật khẩu xác nhận không khớp.'); }
-
-      if (!res.success) { showAlert('registerAlert', res.error); return; }
+      if (!valid) return;
 
       const btn = document.getElementById('registerBtn');
       btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang tạo tài khoản...';
-      setTimeout(() => {
-        showAlert('registerAlert', 'Tạo tài khoản thành công! Đang chuyển trang...', 'success');
-        setTimeout(() => { window.location.href = 'user/dashboard.html'; }, 1000);
-      }, 700);
+      
+      const res = await Auth.register(u, email, pw, cpw, name);
+
+      if (!res.success) { 
+          showAlert('registerAlert', res.error); 
+          btn.disabled = false; 
+          btn.innerHTML = '<i class="fas fa-user-plus"></i> Tạo tài khoản';
+          return; 
+      }
+
+      showAlert('registerAlert', 'Tạo tài khoản thành công! Đang chuyển trang...', 'success');
+      setTimeout(() => { window.location.href = 'user/dashboard.html'; }, 800);
     });
   </script>
 </body>

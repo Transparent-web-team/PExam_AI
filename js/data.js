@@ -208,12 +208,13 @@ const DB = {
   ],
 
   getUser(username) { return this.users.find(u => u.username === username); },
-  getExam(id) { return this.exams.find(e => e.id === id); },
+  getExam(id) { return this.exams.find(e => String(e.id) === String(id)); },
   getQuestions(examId) { return this.questions[examId] || []; },
-  getResultsByUser(userId) { return this.results.filter(r => r.userId === userId); },
-  getResultsByExam(examId) { return this.results.filter(r => r.examId === examId); },
-  getResult(userId, examId) { return this.results.find(r => r.userId === userId && r.examId === examId); },
-  getUserById(id) { return this.users.find(u => u.id === id); },
+  // Support both API snake_case (user_id, exam_id) and mock camelCase (userId, examId)
+  getResultsByUser(userId) { return this.results.filter(r => String(r.user_id || r.userId) === String(userId)); },
+  getResultsByExam(examId) { return this.results.filter(r => String(r.exam_id || r.examId) === String(examId)); },
+  getResult(userId, examId) { return this.results.find(r => String(r.user_id || r.userId) === String(userId) && String(r.exam_id || r.examId) === String(examId)); },
+  getUserById(id) { return this.users.find(u => String(u.id) === String(id)); },
   getStudents() { return this.users.filter(u => u.role === 'student'); },
 
   addResult(result) {
@@ -223,50 +224,233 @@ const DB = {
     this.save();
   },
 
-  addUser(user) { this.users.push(user); this.save(); },
-  updateUser(id, data) {
-    const idx = this.users.findIndex(u => u.id === id);
-    if (idx >= 0) {
-      Object.assign(this.users[idx], data);
-      this.save();
-    }
+  async addUser(userData) {
+      try {
+          const token = Auth.getToken();
+          const res = await fetch('http://localhost:5000/api/users', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+              body: JSON.stringify(userData)
+          });
+          if (res.ok) return await res.json();
+          return null;
+      } catch (e) { console.error(e); return null; }
   },
-  deleteUser(id) {
-    const idx = this.users.findIndex(u => u.id === id);
-    if (idx >= 0) {
-      this.users.splice(idx, 1);
-      this.save();
+
+  async updateUser(id, updateData) {
+      try {
+          const token = Auth.getToken();
+          const res = await fetch(`http://localhost:5000/api/users/${id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+              body: JSON.stringify(updateData)
+          });
+          if (res.ok) return await res.json();
+          return null;
+      } catch (e) { console.error(e); return null; }
+  },
+
+  async deleteUser(id) {
+      try {
+          const token = Auth.getToken();
+          const res = await fetch(`http://localhost:5000/api/users/${id}`, {
+              method: 'DELETE',
+              headers: { 'Authorization': 'Bearer ' + token }
+          });
+          if (res.ok) return await res.json();
+          return null;
+      } catch (e) { console.error(e); return null; }
+  },
+
+  async load() {
+    try {
+      const token = Auth.getToken();
+      if (!token) return;
+
+      const headers = { 'Authorization': 'Bearer ' + token };
+
+      // Load Exams
+      const examsRes = await fetch('http://localhost:5000/api/exams', { headers });
+      if (examsRes.ok) {
+        this.exams = await examsRes.json();
+      }
+
+      // Load Users if Admin
+      const session = Auth.getSession();
+      if (session && session.role === 'admin') {
+        const usersRes = await fetch('http://localhost:5000/api/users', { headers });
+        if (usersRes.ok) {
+          this.users = await usersRes.json();
+        }
+      }
+
+    } catch (e) {
+      console.error('Failed to load DB from API', e);
     }
   },
 
-  load() {
-    try {
-      const stored = localStorage.getItem('ptit_exam_db');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.users) this.users = parsed.users;
-        if (parsed.exams) this.exams = parsed.exams;
-        if (parsed.questions) this.questions = parsed.questions;
-        if (parsed.results) this.results = parsed.results;
+  async loadMyResults() {
+      try {
+          const token = Auth.getToken();
+          if (!token) return [];
+          const headers = { 'Authorization': 'Bearer ' + token };
+          
+          const res = await fetch('http://localhost:5000/api/results/my-results', { headers });
+          if (res.ok) {
+              const data = await res.json();
+              this.results = data;
+              return data;
+          }
+          return [];
+      } catch(e) {
+          console.error(e);
+          return [];
       }
-    } catch (e) {
-      console.error('Failed to load DB from localStorage', e);
+  },
+
+  async loadAllResults() {
+    try {
+        const token = Auth.getToken();
+        if (!token) return [];
+        const headers = { 'Authorization': 'Bearer ' + token };
+        
+        const res = await fetch('http://localhost:5000/api/results', { headers });
+        if (res.ok) {
+            const data = await res.json();
+            this.results = data;
+            return data;
+        }
+        return [];
+    } catch(e) {
+        console.error(e);
+        return [];
     }
+  },
+
+  async loadExamResults(examId) {
+    try {
+        const token = Auth.getToken();
+        if (!token) return [];
+        const headers = { 'Authorization': 'Bearer ' + token };
+        
+        const res = await fetch(`http://localhost:5000/api/results/exam/${examId}`, { headers });
+        if (res.ok) {
+            return await res.json();
+        }
+        return [];
+    } catch(e) {
+        console.error(e);
+        return [];
+    }
+  },
+
+  async getExamDetails(examId) {
+      try {
+          const token = Auth.getToken();
+          const headers = { 'Authorization': 'Bearer ' + token };
+          
+          const res = await fetch(`http://localhost:5000/api/exams/${examId}`, { headers });
+          if (res.ok) {
+              return await res.json();
+          }
+          return null;
+      } catch(e) {
+          console.error(e);
+          return null;
+      }
+  },
+
+  async getExamResult(examId) {
+      // Fetch own result for a specific exam including individual student answers
+      try {
+          const token = Auth.getToken();
+          const headers = { 'Authorization': 'Bearer ' + token };
+          const res = await fetch(`http://localhost:5000/api/results/exam-result/${examId}`, { headers });
+          if (res.ok) return await res.json();
+          return null;
+      } catch(e) {
+          console.error(e);
+          return null;
+      }
+  },
+
+  async submitExam(examId, answers, duration) {
+    try {
+        const token = Auth.getToken();
+        const res = await fetch('http://localhost:5000/api/results/submit', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ examId, answers, duration })
+        });
+        
+        if (res.ok) {
+            return await res.json();
+        }
+        return { success: false };
+    } catch(e) {
+        console.error(e);
+        return { success: false };
+    }
+  },
+
+  // Admin Exam APIs
+  async createExam(examData) {
+      try {
+          const token = Auth.getToken();
+          const res = await fetch('http://localhost:5000/api/exams', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+              body: JSON.stringify(examData)
+          });
+          if (res.ok) return await res.json();
+          return null;
+      } catch (e) { console.error(e); return null; }
+  },
+
+  async updateExam(examId, examData) {
+      try {
+          const token = Auth.getToken();
+          const res = await fetch(`http://localhost:5000/api/exams/${examId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+              body: JSON.stringify(examData)
+          });
+          if (res.ok) return await res.json();
+          return null;
+      } catch (e) { console.error(e); return null; }
+  },
+
+  async deleteExam(examId) {
+      try {
+          const token = Auth.getToken();
+          const res = await fetch(`http://localhost:5000/api/exams/${examId}`, {
+              method: 'DELETE',
+              headers: { 'Authorization': 'Bearer ' + token }
+          });
+          if (res.ok) return await res.json();
+          return null;
+      } catch (e) { console.error(e); return null; }
+  },
+
+  async upsertExamQuestions(examId, questionsArr) {
+      try {
+          const token = Auth.getToken();
+          const res = await fetch(`http://localhost:5000/api/exams/${examId}/questions`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+              body: JSON.stringify(questionsArr)
+          });
+          if (res.ok) return await res.json();
+          return null;
+      } catch (e) { console.error(e); return null; }
   },
 
   save() {
-    try {
-      const data = {
-        users: this.users,
-        exams: this.exams,
-        questions: this.questions,
-        results: this.results
-      };
-      localStorage.setItem('ptit_exam_db', JSON.stringify(data));
-    } catch (e) {
-      console.error('Failed to save DB to localStorage', e);
-    }
+    // No longer save to localStorage mock
   }
 };
 
-DB.load();
+// Removed sync DB.load(), now needs to be called async by pages

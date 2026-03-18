@@ -282,24 +282,48 @@
         const examId = params.get('examId');
         if (!examId) { location.href = 'dashboard.html'; throw new Error(); }
 
-        const exam = DB.getExam(examId);
-        const questions = DB.getQuestions(examId);
-
-        if (!exam || questions.length === 0) { alert('Không tìm thấy bài thi hoặc bài thi chưa có câu hỏi!'); location.href = 'dashboard.html'; throw new Error(); }
+        let exam = null;
+        let questions = [];
 
         // State
         let currentQ = 0;
-        const answers = new Array(questions.length).fill(-1);
-        const flagged = new Set();
+        let answers = [];
+        let flagged = new Set();
         let timerObj = null;
-        const startTime = Date.now();
+        let startTime = Date.now();
 
-        // Init UI
-        document.getElementById('examTitle').textContent = exam.title;
-        document.getElementById('examTypeBadge').textContent = Utils.typeLabel(exam.type);
-        document.getElementById('examTypeBadge').className = 'badge ' + Utils.typeBadge(exam.type);
-        document.getElementById('examQCount').textContent = questions.length;
-        document.getElementById('userAvatar').textContent = session.avatar;
+        async function initExam() {
+            exam = await DB.getExamDetails(examId);
+            if (!exam || !exam.questions || exam.questions.length === 0) {
+                alert('Không tìm thấy bài thi hoặc bài thi chưa có câu hỏi!'); 
+                location.href = 'dashboard.html'; 
+                return;
+            }
+            questions = exam.questions.map(q => ({
+                id: q.id,
+                text: q.content,
+                options: q.options.map(o => o.content),
+                optionIds: q.options.map(o => o.id)
+            }));
+
+            answers = new Array(questions.length).fill(-1);
+
+            // Init UI
+            document.getElementById('examTitle').textContent = exam.title;
+            document.getElementById('examTypeBadge').textContent = Utils.typeLabel(exam.type);
+            document.getElementById('examTypeBadge').className = 'badge ' + Utils.typeBadge(exam.type);
+            document.getElementById('examQCount').textContent = questions.length;
+            document.getElementById('userAvatar').textContent = session.avatar;
+
+            // Timer
+            const timerEl = document.getElementById('timerDisplay').parentElement;
+            timerObj = Utils.startTimer(exam.duration * 60, document.getElementById('timerDisplay'), () => {
+                Utils.closeAllModals();
+                Utils.openModal('timeoutModal');
+            });
+
+            renderQuestion();
+        }
 
         // Build palette
         function buildPalette() {
@@ -326,7 +350,7 @@
             const q = questions[currentQ];
             document.getElementById('qNumber').textContent = `Câu ${currentQ + 1}/${questions.length}`;
             document.getElementById('qText').textContent = q.text;
-            const letters = ['A', 'B', 'C', 'D', 'E'];
+            const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
             document.getElementById('optionList').innerHTML = q.options.map((opt, i) =>
                 `<div class="option-item ${answers[currentQ] === i ? 'selected' : ''}" data-idx="${i}">
       <div class="option-letter">${letters[i]}</div>
@@ -346,9 +370,8 @@
             flagBtn.classList.toggle('flagged', flagged.has(currentQ));
             flagBtn.innerHTML = flagged.has(currentQ) ? '<i class="fas fa-flag"></i> Bỏ đánh dấu' : '<i class="fas fa-flag"></i> Đánh dấu câu hỏi này';
             document.getElementById('prevBtn').disabled = currentQ === 0;
-            document.getElementById('nextBtn').textContent = currentQ === questions.length - 1 ? 'Xem lại' : 'Câu tiếp';
             document.getElementById('nextBtn').innerHTML = currentQ === questions.length - 1
-                ? '<i class="fas fa-list-ul"></i> Xem bảng'
+                ? '<i class="fas fa-list-ul"></i> Xem bảng câu hỏi'
                 : 'Câu tiếp <i class="fas fa-chevron-right"></i>';
             buildPalette();
         }
@@ -380,35 +403,50 @@
         }
 
         document.getElementById('submitBtn').addEventListener('click', openSubmit);
-        document.getElementById('confirmSubmitBtn').addEventListener('click', doSubmit);
-        document.getElementById('timeoutOkBtn').addEventListener('click', () => { doSubmit(true); });
+        document.getElementById('confirmSubmitBtn').addEventListener('click', () => { doSubmit() });
+        document.getElementById('timeoutOkBtn').addEventListener('click', () => { doSubmit(true) });
 
-        function doSubmit(isTimeout = false) {
+        async function doSubmit(isTimeout = false) {
+            document.getElementById('confirmSubmitBtn').disabled = true;
+            document.getElementById('timeoutOkBtn').disabled = true;
             if (timerObj) timerObj.stop();
-            // Calculate score
-            let correct = 0;
-            answers.forEach((ans, i) => { if (ans === questions[i].correct) correct++; });
-            const score = (correct / questions.length) * exam.totalScore;
-            const duration = Math.round((Date.now() - startTime) / 1000);
-            const result = {
-                id: 'r' + Date.now(), userId: session.userId, examId,
-                score, correct, total: questions.length, status: 'completed',
-                duration: Math.round(duration / 60), submitTime: new Date().toISOString(), answers: [...answers]
-            };
-            DB.addResult(result);
-            sessionStorage.setItem('lastResult', JSON.stringify({ ...result, examId, userId: session.userId }));
-            Utils.closeAllModals();
-            location.href = `results.html?examId=${examId}&userId=${session.userId}&new=1`;
+            
+            const durationSecs = Math.round((Date.now() - startTime) / 1000);
+            const durationMins = Math.round(durationSecs / 60);
+
+            // Create payload
+            const payloadAnswers = [];
+            answers.forEach((ansIdx, qIdx) => {
+                if (ansIdx !== -1) {
+                    payloadAnswers.push({
+                        questionId: questions[qIdx].id,
+                        selectedOptionId: questions[qIdx].optionIds[ansIdx]
+                    });
+                }
+            });
+
+            // Call API
+            const resultRes = await DB.submitExam(examId, payloadAnswers, durationMins);
+            if (resultRes && resultRes.result) {
+                // Save last result to sessionStorage so results page can use it immediately
+                sessionStorage.setItem('lastResult', JSON.stringify({
+                    examId: String(examId),
+                    score: resultRes.result.score,
+                    correct_answers: resultRes.result.correctAnswers,
+                    total_questions: resultRes.result.totalQuestions,
+                    duration: durationMins,
+                    answers: answers // raw display_order indices
+                }));
+                Utils.closeAllModals();
+                location.href = `results.html?examId=${examId}&userId=${session.userId}&new=1`;
+            } else {
+                alert('Có lỗi xảy ra khi nộp bài');
+                document.getElementById('confirmSubmitBtn').disabled = false;
+                document.getElementById('timeoutOkBtn').disabled = false;
+            }
         }
 
-        // Timer
-        const timerEl = document.getElementById('timerDisplay').parentElement;
-        timerObj = Utils.startTimer(exam.duration * 60, document.getElementById('timerDisplay'), () => {
-            Utils.closeAllModals();
-            Utils.openModal('timeoutModal');
-        });
-
-        renderQuestion();
+        initExam();
     </script>
 </body>
 

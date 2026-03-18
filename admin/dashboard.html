@@ -80,8 +80,8 @@
                     </div>
                     <i class="fas fa-chevron-down fs-12" style="color:var(--text-muted)"></i>
                 </div>
-                <div class="dropdown-menu topbar-dropdown">
-                    <div class="dropdown-item"><i class="fas fa-user"></i> Hồ sơ admin</div>
+                <div class="dropdown-menu topbar-dropdown" id="adminDropdown">
+                    <div class="dropdown-item" id="btnAdminProfile"><i class="fas fa-user"></i> Hồ sơ admin</div>
                     <div class="dropdown-divider"></div>
                     <div class="dropdown-item danger" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Đăng xuất</div>
                 </div>
@@ -154,16 +154,12 @@
                         <h4><i class="fas fa-chart-pie"></i> Phân loại kỳ thi</h4>
                     </div>
                     <div class="card-body">
-                        <div style="position:relative;height:180px"><canvas id="examTypeChart"></canvas></div>
-                        <div class="legend mt-3" style="margin-top:12px;justify-content:center">
-                            <div class="legend-item">
-                                <div class="legend-dot" style="background:#0284c7"></div> Luyện tập
-                            </div>
-                            <div class="legend-item">
-                                <div class="legend-dot" style="background:#d97706"></div> Giữa kỳ
-                            </div>
-                            <div class="legend-item">
-                                <div class="legend-dot" style="background:#C0272D"></div> Cuối kỳ
+                        <div style="display:flex;flex-direction:column;align-items:center">
+                            <div style="position:relative;width:180px;height:180px"><canvas id="examTypeChart"></canvas></div>
+                            <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:14px">
+                                <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted)"><div style="width:12px;height:12px;border-radius:50%;background:#0284c7"></div> Luyện tập</div>
+                                <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted)"><div style="width:12px;height:12px;border-radius:50%;background:#d97706"></div> Giữa kỳ</div>
+                                <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted)"><div style="width:12px;height:12px;border-radius:50%;background:#C0272D"></div> Cuối kỳ</div>
                             </div>
                         </div>
                     </div>
@@ -194,71 +190,127 @@
         </main>
     </div>
 
+    <!-- ADMIN PROFILE MODAL -->
+    <div class="modal-overlay" id="adminProfileModal" onclick="closeAdminModal()" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s">
+        <div onclick="event.stopPropagation()" style="background:var(--surface);border-radius:var(--radius-xl);box-shadow:var(--shadow-lg);width:100%;max-width:460px;transform:translateY(20px);transition:transform .25s">
+            <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+                <h3 style="margin:0;font-size:17px"><i class="fas fa-user-shield" style="color:var(--ptit-red);margin-right:8px"></i> Hồ sơ quản trị viên</h3>
+                <button onclick="closeAdminModal()" style="width:32px;height:32px;border-radius:50%;border:none;background:var(--surface2);color:var(--text-muted);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="padding:24px">
+                <div id="adminProfileAvatar" style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--ptit-red),#e05c60);color:#fff;font-size:28px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">AD</div>
+                <div id="adminProfileFields"></div>
+            </div>
+        </div>
+    </div>
+
     <script src="../js/data.js"></script>
     <script src="../js/auth.js"></script>
     <script src="../js/utils.js"></script>
     <script>
         const session = Auth.requireAuthAdmin();
-        document.getElementById('userAvatar').textContent = session.avatar;
+        document.getElementById('userAvatar').textContent = session.avatar || 'AD';
         document.getElementById('userName').textContent = session.name;
         Utils.initSidebar();
 
-        document.getElementById('topbarUserBtn').addEventListener('click', e => { e.stopPropagation(); document.querySelector('.dropdown').classList.toggle('open'); });
+        // Dropdown
+        document.getElementById('topbarUserBtn').addEventListener('click', e => {
+            e.stopPropagation();
+            document.querySelector('.dropdown').classList.toggle('open');
+        });
         document.addEventListener('click', () => document.querySelector('.dropdown').classList.remove('open'));
         document.getElementById('logoutBtn').addEventListener('click', () => { Auth.logout(); location.href = 'login.html'; });
 
-        // KPIs
-        const students = DB.getStudents();
-        const exams = DB.exams;
-        const results = DB.results;
-        const avgScore = results.length ? (results.reduce((a, r) => a + r.score, 0) / results.length).toFixed(1) : 0;
-        const completedCount = results.filter(r => r.status === 'completed').length;
-        const totalPossible = students.length * exams.length;
-        const compRate = totalPossible ? Math.round(completedCount / totalPossible * 100) : 0;
-
-        const kpis = [
-            { icon: 'fa-users', color: 'blue', value: students.length, label: 'Sinh viên', trend: '+3', up: true },
-            { icon: 'fa-file-alt', color: 'red', value: exams.length, label: 'Kỳ thi', trend: '+1', up: true },
-            { icon: 'fa-star', color: 'orange', value: avgScore, label: 'Điểm TB', trend: '+0.2', up: true },
-            { icon: 'fa-check-circle', color: 'green', value: compRate + '%', label: 'Tỷ lệ hoàn thành', trend: '+5%', up: true },
-        ];
-        document.getElementById('kpiGrid').innerHTML = kpis.map(k =>
-            `<div class="kpi-card">
-    <div class="kpi-icon ${k.color}"><i class="fas ${k.icon}"></i></div>
-    <div class="kpi-info">
-      <div class="kpi-value">${k.value}</div>
-      <div class="kpi-label">${k.label}</div>
-      <div class="kpi-trend up"><i class="fas fa-arrow-up"></i> ${k.trend} tháng này</div>
-    </div>
-  </div>`
-        ).join('');
-
-        // Exam type pie
-        const types = { practice: 0, midterm: 0, final: 0 };
-        exams.forEach(e => types[e.type]++);
-        new Chart(document.getElementById('examTypeChart'), {
-            type: 'doughnut',
-            data: {
-                labels: ['Luyện tập', 'Giữa kỳ', 'Cuối kỳ'],
-                datasets: [{ data: [types.practice, types.midterm, types.final], backgroundColor: ['#0284c7', '#d97706', '#C0272D'], borderWidth: 0 }]
-            },
-            options: { cutout: '65%', plugins: { legend: { display: false } } }
+        // Admin profile modal
+        document.getElementById('btnAdminProfile').addEventListener('click', () => {
+            document.querySelector('.dropdown').classList.remove('open');
+            const modal = document.getElementById('adminProfileModal');
+            document.getElementById('adminProfileAvatar').textContent = session.avatar || 'AD';
+            const fields = [
+                ['fa-user', 'Họ và tên', session.name || '—'],
+                ['fa-envelope', 'Email', session.email || '—'],
+                ['fa-user-circle', 'Tên đăng nhập', session.username || '—'],
+                ['fa-shield-alt', 'Vai trò', 'Quản trị viên'],
+            ];
+            document.getElementById('adminProfileFields').innerHTML = fields.map(([icon, label, val]) =>
+                `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+                    <div style="width:36px;height:36px;border-radius:var(--radius-sm);background:var(--ptit-red-soft);color:var(--ptit-red);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0"><i class="fas ${icon}"></i></div>
+                    <div><div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px">${label}</div><div style="font-size:14px;font-weight:600;color:var(--text)">${val}</div></div>
+                 </div>`).join('');
+            modal.style.opacity = '1'; modal.style.pointerEvents = 'all';
+            modal.querySelector('div').style.transform = 'translateY(0)';
+            modal.classList.add('open'); document.body.style.overflow = 'hidden';
         });
+        function closeAdminModal() {
+            const modal = document.getElementById('adminProfileModal');
+            modal.style.opacity = '0';
+            modal.style.pointerEvents = 'none';
+            modal.querySelector('div').style.transform = 'translateY(20px)';
+            modal.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAdminModal(); });
 
-        // Recent results table
-        const recentResults = [...results].sort((a, b) => new Date(b.submitTime) - new Date(a.submitTime)).slice(0, 10);
-        document.getElementById('recentBody').innerHTML = recentResults.map(r => {
-            const user = DB.getUserById(r.userId);
-            const exam = DB.getExam(r.examId);
-            const pass = r.score >= (exam?.passingScore || 5);
-            return `<tr>
-    <td><div class="flex items-center gap-2"><div class="topbar-avatar" style="width:30px;height:30px;font-size:11px">${user?.avatar || '?'}</div><span>${user?.name || '—'}</span></div></td>
-    <td>${exam?.title || '—'}</td>
-    <td><strong style="color:${Utils.scoreColor(r.score)}">${r.score.toFixed(2)}</strong></td>
-    <td><span class="badge ${pass ? 'badge-green' : 'badge-red'}">${pass ? 'Đạt' : 'Không đạt'}</span></td>
-    <td>${Utils.formatDateTime(r.submitTime)}</td>
-  </tr>`;
-        }).join('');
+        async function initDashboard() {
+            await DB.load();
+            await DB.loadAllResults();
+
+            // KPIs
+            const students = DB.getStudents();
+            const exams = DB.exams;
+            const results = DB.results || [];
+            const avgScore = results.length ? (results.reduce((a, r) => a + r.score, 0) / results.length).toFixed(1) : 0;
+            const completedCount = results.filter(r => r.score !== undefined).length; 
+            const totalPossible = students.length * exams.length;
+            const compRate = totalPossible ? Math.round(completedCount / totalPossible * 100) : 0;
+
+            const kpis = [
+                { icon: 'fa-users', color: 'blue', value: students.length, label: 'Sinh viên', trend: '+3', up: true },
+                { icon: 'fa-file-alt', color: 'red', value: exams.length, label: 'Kỳ thi', trend: '+1', up: true },
+                { icon: 'fa-star', color: 'orange', value: avgScore, label: 'Điểm TB', trend: '+0.2', up: true },
+                { icon: 'fa-check-circle', color: 'green', value: compRate + '%', label: 'Tỷ lệ hoàn thành', trend: '+5%', up: true },
+            ];
+            document.getElementById('kpiGrid').innerHTML = kpis.map(k =>
+                `<div class="kpi-card">
+        <div class="kpi-icon ${k.color}"><i class="fas ${k.icon}"></i></div>
+        <div class="kpi-info">
+          <div class="kpi-value">${k.value}</div>
+          <div class="kpi-label">${k.label}</div>
+          <div class="kpi-trend up"><i class="fas fa-arrow-up"></i> ${k.trend} tháng này</div>
+        </div>
+      </div>`
+            ).join('');
+
+            // Exam type pie
+            const types = { practice: 0, midterm: 0, final: 0 };
+            exams.forEach(e => types[e.type]++);
+            new Chart(document.getElementById('examTypeChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Luyện tập', 'Giữa kỳ', 'Cuối kỳ'],
+                    datasets: [{ data: [types.practice, types.midterm, types.final], backgroundColor: ['#0284c7', '#d97706', '#C0272D'], borderWidth: 0 }]
+                },
+                options: { cutout: '65%', plugins: { legend: { display: false } }, responsive: true, maintainAspectRatio: true }
+            });
+
+            // Recent results table
+            const recentResults = [...results].sort((a, b) => new Date(b.submit_time) - new Date(a.submit_time)).slice(0, 10);
+            document.getElementById('recentBody').innerHTML = recentResults.map(r => {
+                const userAvatar = r.user_name ? r.user_name[0] : '?';
+                const userName = r.user_name || r.username || '—';
+                const examTitle = r.exam_title || '—';
+                const pass = r.score >= 5; // Simplified default passing score
+                return `<tr>
+        <td><div class="flex items-center gap-2"><div class="topbar-avatar" style="width:30px;height:30px;font-size:11px">${userAvatar}</div><span>${userName}</span></div></td>
+        <td>${examTitle}</td>
+        <td><strong style="color:${Utils.scoreColor(r.score)}">${r.score.toFixed(2)}</strong></td>
+        <td><span class="badge ${pass ? 'badge-green' : 'badge-red'}">${pass ? 'Đạt' : 'Không đạt'}</span></td>
+        <td>${Utils.formatDateTime(r.submit_time || r.submitTime)}</td>
+      </tr>`;
+            }).join('');
+        }
+
+        initDashboard();
     </script>
 </body>
 

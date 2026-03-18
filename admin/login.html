@@ -91,6 +91,12 @@
                     </div>
                     <span class="form-error" id="adminPasswordErr"></span>
                 </div>
+                <div class="flex justify-between items-center mb-3" style="margin-bottom:20px;flex-wrap:wrap;gap:10px">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text-muted)">
+                        <input type="checkbox" id="adminRememberMe"> Ghi nhớ đăng nhập
+                    </label>
+                    <a href="#" style="font-size:13px;color:var(--ptit-red);font-weight:600" onclick="event.preventDefault(); document.getElementById('adminAlert').innerHTML='<div class=\'alert alert-warning\'><i class=\'fas fa-exclamation-triangle\'></i> Vui lòng liên hệ Quản trị viên cấp cao để khôi phục mật khẩu.</div>';">Quên mật khẩu?</a>
+                </div>
                 <button class="btn btn-dark w-100 btn-lg" id="adminLoginBtn">
                     <i class="fas fa-sign-in-alt"></i> Đăng nhập Admin
                 </button>
@@ -119,24 +125,24 @@
             this.classList.toggle('fa-eye'); this.classList.toggle('fa-eye-slash');
         });
 
-        document.getElementById('adminLoginBtn').addEventListener('click', () => {
+        document.getElementById('adminLoginBtn').addEventListener('click', async () => {
             const u = document.getElementById('adminUsername').value.trim();
             const p = document.getElementById('adminPassword').value;
             const alertEl = document.getElementById('adminAlert');
             alertEl.innerHTML = '';
             if (!u || !p) { alertEl.innerHTML = '<div class="alert alert-danger"><i class="fas fa-times-circle"></i> Vui lòng nhập đầy đủ thông tin.</div>'; return; }
+            
             const btn = document.getElementById('adminLoginBtn');
             btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xác thực...';
-            setTimeout(() => {
-                const res = Auth.login(u, p);
-                if (res.success && res.user.role === 'admin') {
-                    alertEl.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> Đăng nhập thành công!</div>';
-                    setTimeout(() => location.href = 'dashboard.html', 700);
-                } else {
-                    alertEl.innerHTML = `<div class="alert alert-danger"><i class="fas fa-times-circle"></i> ${res.success ? 'Tài khoản không có quyền Admin.' : res.error}</div>`;
-                    btn.disabled = false; btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Đăng nhập Admin';
-                }
-            }, 600);
+            
+            const res = await Auth.login(u, p);
+            if (res.success && res.user.role === 'admin') {
+                alertEl.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> Đăng nhập thành công!</div>';
+                setTimeout(() => location.href = 'dashboard.html', 700);
+            } else {
+                alertEl.innerHTML = `<div class="alert alert-danger"><i class="fas fa-times-circle"></i> ${res.success ? 'Tài khoản không có quyền Admin.' : res.error}</div>`;
+                btn.disabled = false; btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Đăng nhập Admin';
+            }
         });
         document.getElementById('adminPassword').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('adminLoginBtn').click(); });
     </script>
