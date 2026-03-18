@@ -1,219 +1,301 @@
-# Mô tả Backend – Hệ thống PExam
+# Mô tả Backend – PExam (Spring Boot)
 
-> **Stack:** Node.js · Express.js 5 · Microsoft SQL Server (MSSQL) · JWT · bcryptjs
+> **Stack:** Java 21 · Spring Boot 3.x · Spring Security 6 + JWT · PostgreSQL · Flyway · OpenAPI 3
 
 ---
 
 ## 1. Tổng quan kiến trúc
 
-Hệ thống backend PExam được xây dựng theo mô hình **MVC phân tầng** (Model–View–Controller), trong đó:
-
-- **Model** → Lớp dữ liệu: `db/database.js` (kết nối & khởi tạo DB, seed data)
-- **Controller** → Logic xử lý: các file trong `routes/` (mỗi file = 1 nhóm tài nguyên)
-- **Middleware** → Bảo vệ route: `middleware/auth.js` (JWT verify, role check)
-- **View** → Không có (backend là REST API thuần, frontend độc lập)
+PExam backend được xây dựng theo mô hình **Layered Architecture (MVC mở rộng)**:
 
 ```
-PExam/backend/
-├── server.js               ← Entry point, khởi tạo Express app
-├── .env                    ← Biến môi trường (cổng, JWT secret, DB config)
-├── package.json            ← Khai báo dependencies
-├── db/
-│   └── database.js         ← Kết nối MSSQL, tạo bảng, seed data
-├── middleware/
-│   └── auth.js             ← JWT authentication & role authorization
-└── routes/
-    ├── auth.js             ← Đăng nhập, đăng ký, lấy thông tin bản thân
-    ├── users.js            ← CRUD người dùng (Admin only)
-    ├── exams.js            ← CRUD bài thi + quản lý câu hỏi (Admin + Student)
-    └── results.js          ← Nộp bài, lấy kết quả thi
+Frontend (HTML/JS)
+        ↓ HTTP / REST API
+┌─────────────────────────────────────┐
+│          Controller Layer           │  ← Nhận request, validate input, trả response
+│  (Spring MVC @RestController)       │
+├─────────────────────────────────────┤
+│           Service Layer             │  ← Business logic, tính điểm, phân quyền nghiệp vụ
+│  (@Service, @Transactional)         │
+├─────────────────────────────────────┤
+│         Repository Layer            │  ← Truy vấn DB (Spring Data JPA)
+│  (JpaRepository / custom queries)  │
+├─────────────────────────────────────┤
+│        Entity / Domain Layer        │  ← Ánh xạ bảng DB (JPA Entity, UUID PK)
+│  (Hibernate ORM)                    │
+└─────────────────────────────────────┘
+        ↓
+   PostgreSQL 15+
 ```
 
 ---
 
-## 2. Cấu hình & Khởi động
+## 2. Cấu trúc thư mục dự án
 
-### 2.1. Biến môi trường (`.env`)
+```
+pexam-backend/
+├── src/main/java/vn/ptit/pexam/
+│   ├── PExamApplication.java           ← Entry point
+│   ├── config/
+│   │   ├── SecurityConfig.java         ← Spring Security, JWT filter, CORS
+│   │   ├── SwaggerConfig.java          ← OpenAPI 3 / Swagger UI
+│   │   └── RedisConfig.java            ← Cache config (tùy chọn)
+│   ├── controller/
+│   │   ├── AuthController.java         ← /auth/**, /me
+│   │   ├── AdminUserController.java    ← /admin/users/**
+│   │   ├── SubjectController.java      ← /subjects/**
+│   │   ├── QuestionController.java     ← /questions/**
+│   │   ├── ClassController.java        ← /classes/**
+│   │   ├── ExamTemplateController.java ← /exam-templates/**
+│   │   ├── ExamEventController.java    ← /exam-events/**
+│   │   ├── AttemptController.java      ← /attempts/**
+│   │   └── SystemController.java       ← /system/health
+│   ├── service/
+│   │   ├── AuthService.java
+│   │   ├── UserService.java
+│   │   ├── SubjectService.java
+│   │   ├── QuestionService.java
+│   │   ├── ClassService.java
+│   │   ├── ExamTemplateService.java
+│   │   ├── ExamEventService.java
+│   │   ├── AttemptService.java         ← Tính điểm, autosave, submit
+│   │   └── GradebookService.java
+│   ├── repository/
+│   │   ├── UserRepository.java
+│   │   ├── ExamTemplateRepository.java
+│   │   ├── ExamEventRepository.java
+│   │   ├── AttemptRepository.java
+│   │   └── ...
+│   ├── entity/
+│   │   ├── User.java
+│   │   ├── Subject.java
+│   │   ├── Question.java
+│   │   ├── QuestionOption.java
+│   │   ├── ExamClass.java
+│   │   ├── ExamTemplate.java
+│   │   ├── TemplateQuestion.java
+│   │   ├── ExamEvent.java
+│   │   ├── Attempt.java
+│   │   └── StudentAnswer.java
+│   ├── dto/
+│   │   ├── request/                    ← Input DTOs (validated)
+│   │   └── response/                  ← Output DTOs (clean response)
+│   ├── security/
+│   │   ├── JwtTokenProvider.java       ← Tạo & xác thực JWT
+│   │   ├── JwtAuthFilter.java          ← Filter gắn vào SecurityChain
+│   │   └── UserDetailsServiceImpl.java ← Load user từ DB
+│   └── exception/
+│       ├── GlobalExceptionHandler.java ← @ControllerAdvice xử lý lỗi
+│       └── ...
+├── src/main/resources/
+│   ├── application.yml                 ← Cấu hình app (port, DB, JWT, Redis)
+│   └── db/migration/
+│       ├── V1__create_tables.sql       ← Flyway migration: tạo bảng
+│       ├── V2__seed_data.sql           ← Flyway migration: dữ liệu mẫu
+│       └── ...
+└── pom.xml                             ← Maven dependencies
+```
 
-| Biến | Ví dụ | Mô tả |
+---
+
+## 3. Cơ sở dữ liệu (PostgreSQL + Flyway)
+
+### 3.1. Sơ đồ Entity (ERD tóm tắt)
+
+```
+users ──────────────── exam_class_students ─── exam_classes
+  │                                               │
+  │ (created_by)                                  │ (class_id)
+  ↓                                               ↓
+exam_templates ────── template_questions ──── questions ── question_options
+  │                                               │
+  │ (template_id)                                 └── subject_id ── subjects
+  ↓
+exam_events ─── attempts ─── student_answers
+```
+
+### 3.2. Các bảng chính
+
+| Bảng | Mô tả | PK |
 |---|---|---|
-| `PORT` | `5000` | Cổng Express server lắng nghe |
-| `JWT_SECRET` | `super_secret_...` | Khóa ký JWT token |
-| `DB_USER` | `sa` | Tên đăng nhập SQL Server |
-| `DB_PASSWORD` | `123456` | Mật khẩu SQL Server |
-| `DB_SERVER` | `localhost` | Server/host SQL Server |
-| `DB_NAME` | `pexam` | Tên database |
+| `users` | Tài khoản (role: STUDENT/TEACHER/ADMIN) | UUID |
+| `subjects` | Môn học | UUID |
+| `questions` | Câu hỏi (level: EASY/MEDIUM/HARD) | UUID |
+| `question_options` | Đáp án A/B/C/D, is_correct | UUID |
+| `exam_classes` | Lớp học (code, semester) | UUID |
+| `exam_class_students` | Quan hệ nhiều-nhiều user ↔ class | — |
+| `exam_templates` | Đề thi (shuffle, duration) | UUID |
+| `template_questions` | Quan hệ đề ↔ câu hỏi + điểm | — |
+| `exam_events` | Kỳ thi (lịch, attemptLimit, passScore) | UUID |
+| `attempts` | Lần làm bài (startedAt, submittedAt, score) | UUID |
+| `student_answers` | Đáp án sinh viên đã chọn | UUID |
 
-### 2.2. Khởi động server (`server.js`)
+### 3.3. Flyway Migration
 
-Luồng khởi động:
-1. Load `.env` bằng `dotenv`
-2. Khởi tạo Express app, gắn CORS và JSON middleware
-3. Gọi `initDb()` → tạo bảng nếu chưa có → seed dữ liệu mẫu nếu DB rỗng
-4. Đăng ký các route: `/api/auth`, `/api/users`, `/api/exams`, `/api/results`
-5. Lắng nghe trên `PORT`
+Schema được quản lý qua file SQL versioned trong `db/migration/`:
+- `V1__create_tables.sql` — Tạo toàn bộ bảng
+- `V2__seed_data.sql` — Insert dữ liệu mẫu (admin, môn học, câu hỏi mẫu)
+- Mỗi thay đổi schema → tạo file `V{n+1}__description.sql` mới
+
+---
+
+## 4. Bảo mật (Spring Security 6 + JWT)
+
+### 4.1. Luồng xác thực
+
+```
+[Client] POST /auth/login
+    → [AuthController] → [AuthService] → [UserDetailsServiceImpl]
+    → So sánh password (BCryptPasswordEncoder)
+    → [JwtTokenProvider.generateAccessToken()] → accessToken (15–60 phút)
+    → [JwtTokenProvider.generateRefreshToken()] → refreshToken (7 ngày)
+    → Trả về { accessToken, refreshToken, user }
+
+[Client] GET /me (kèm Bearer token)
+    → [JwtAuthFilter] lấy token từ header
+    → [JwtTokenProvider.validateToken()]
+    → Gắn Authentication vào SecurityContextHolder
+    → Request đến Controller bình thường
+```
+
+### 4.2. Phân quyền
+
+| Annotation / Config | Áp dụng |
+|---|---|
+| `@PreAuthorize("hasRole('ADMIN')")` | Chỉ Admin |
+| `@PreAuthorize("hasAnyRole('ADMIN','TEACHER')")` | Admin hoặc Teacher |
+| `permitAll()` trong SecurityConfig | Public endpoints |
+| `authenticated()` | Tất cả role cần token |
+
+### 4.3. Refresh Token
+
+- accessToken hết hạn sau **1 giờ** (configurable)
+- refreshToken hết hạn sau **7 ngày**
+- `POST /auth/refresh` → server verify refreshToken → cấp accessToken mới
+- `POST /auth/logout` → đưa refreshToken vào **blacklist** (Redis hoặc DB)
+
+---
+
+## 5. Xử lý Logic Quan trọng
+
+### 5.1. Bắt đầu làm bài (`POST /exam-events/{eventId}/attempts`)
+
+1. Kiểm tra sinh viên có trong lớp của kỳ thi không
+2. Kiểm tra kỳ thi đang trong thời gian cho phép (`startAt ≤ now ≤ endAt`)
+3. Kiểm tra số lần đã thi không vượt `attemptLimit`
+4. Lấy danh sách câu hỏi từ template, **shuffle** nếu `shuffleQuestions = true`
+5. Shuffle từng đáp án nếu `shuffleOptions = true`
+6. Tạo bản ghi `attempts` với `startedAt`, `expiresAt`
+7. Trả về đề thi **không có đáp án đúng** (`correctKeys` bị ẩn)
+
+### 5.2. Autosave (`PUT /attempts/{id}/answers`)
+
+1. Kiểm tra attempt còn hạn (`now < expiresAt`)
+2. Kiểm tra attempt chưa submit (`submittedAt IS NULL`)
+3. Upsert bảng `student_answers` cho từng câu được gửi
+4. Trả về `remainingTime`
+
+### 5.3. Nộp bài và Tính điểm (`POST /attempts/{id}/submit`)
+
+1. Lock attempt (đánh dấu `submittedAt = now`)
+2. Fetch tất cả `student_answers` + `correctKeys` từ DB
+3. Tính điểm từng câu: `pointsEarned = points nếu selectedKeys == correctKeys, else 0`
+4. Tổng điểm → `score = Σ pointsEarned`
+5. So sánh với `passScore` → set `passed`
+6. Lưu vào bảng `attempts`
+
+---
+
+## 6. Validate Input (Jakarta Bean Validation)
+
+```java
+// Ví dụ DTO có validation
+public class LoginRequest {
+    @NotBlank @Email
+    private String email;
+
+    @NotBlank @Size(min = 8)
+    private String password;
+}
+
+// GlobalExceptionHandler xử lý MethodArgumentNotValidException → 422
+```
+
+---
+
+## 7. API Documentation (Swagger UI)
+
+Sau khi chạy server:
+- **Swagger UI:** `http://localhost:8080/swagger-ui.html`
+- **OpenAPI JSON:** `http://localhost:8080/v3/api-docs`
+
+---
+
+## 8. Cấu hình (`application.yml`)
+
+```yaml
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/pexam
+    username: postgres
+    password: 123456
+  jpa:
+    hibernate:
+      ddl-auto: validate  # Flyway quản lý schema, JPA chỉ validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+jwt:
+  secret: "super_secret_key_for_pexam_2026_spring_boot"
+  access-token-expiry: 3600      # 1 giờ (giây)
+  refresh-token-expiry: 604800   # 7 ngày (giây)
+
+redis:  # Tùy chọn
+  host: localhost
+  port: 6379
+```
+
+---
+
+## 9. Khởi động dự án
 
 ```bash
-# Cài dependencies
-cd backend && npm install
+# Yêu cầu: Java 21, Maven 3.9+, PostgreSQL 15+
 
-# Chạy development (tự reload khi sửa code)
-npm run dev
+# 1. Tạo database
+createdb pexam
 
-# Chạy production
-npm start
+# 2. Build project
+mvn clean package -DskipTests
+
+# 3. Chạy server
+java -jar target/pexam-backend-1.0.0.jar
+
+# Hoặc dùng Maven
+mvn spring-boot:run
+
+# Hoặc Docker Compose (tùy chọn)
+docker-compose up -d
 ```
 
 ---
 
-## 3. Lớp Cơ sở dữ liệu (`db/database.js`)
+## 10. Dependencies (pom.xml)
 
-### 3.1. Kết nối MSSQL (Connection Pool)
-
-```javascript
-// Singleton pool – chỉ tạo 1 lần, tái dụng mọi request
-async function getDbConnection() {
-    if (!poolPromise) {
-        poolPromise = new sql.ConnectionPool(config).connect();
-    }
-    return poolPromise;
-}
-```
-
-Cấu hình sử dụng `trustServerCertificate: true` cho môi trường dev local.
-
-### 3.2. Khởi tạo bảng (`initDb`)
-
-Hàm `initDb()` tạo **6 bảng** với kiểm tra `IF NOT EXISTS`:
-
-| Bảng | Mô tả |
+| Dependency | Mục đích |
 |---|---|
-| `users` | Tài khoản sinh viên & admin |
-| `exams` | Thông tin đề thi |
-| `questions` | Câu hỏi của từng đề thi |
-| `question_options` | Đáp án A/B/C/D cho mỗi câu hỏi |
-| `exam_results` | Kết quả mỗi lần nộp bài của sinh viên |
-| `student_answers` | Chi tiết đáp án sinh viên đã chọn |
-
-**Cascade delete:** `questions` ON DELETE CASCADE từ `exams`; `question_options` ON DELETE CASCADE từ `questions`; `student_answers` ON DELETE CASCADE từ `exam_results`.
-
-### 3.3. Dữ liệu mẫu (Seed Data)
-
-Nếu bảng `users` rỗng, hệ thống sẽ tự tạo:
-- **6 tài khoản:** 5 sinh viên (`sinhvien01`–`05`, pass: `123456`) + 1 admin (`admin`, pass: `admin123`)
-- **6 đề thi mẫu:**
-  - Lập trình Web (15 câu, practice, open)
-  - Cơ sở dữ liệu (10 câu, midterm, open)
-  - Mạng máy tính (15 câu, final, scheduled – 10/06/2026)
-  - Lập trình OOP (20 câu, practice, open)
-  - An toàn thông tin (10 câu, practice, open)
-  - Hệ điều hành (10 câu, midterm, open)
-- **Kết quả mẫu** cho `sinhvien01` và `sinhvien02`
-
----
-
-## 4. Middleware xác thực (`middleware/auth.js`)
-
-### 4.1. `authenticateToken` – Xác thực JWT
-
-Kiểm tra header `Authorization: Bearer <token>`:
-- Token không có → `401 Unauthorized`
-- Token không hợp lệ / hết hạn → `403 Forbidden`
-- Token hợp lệ → gắn `req.user = { id, username, role }` và gọi `next()`
-
-### 4.2. `requireAdmin` – Kiểm tra quyền Admin
-
-Được dùng sau `authenticateToken`:
-- `req.user.role !== 'admin'` → `403 Forbidden`
-- Là admin → gọi `next()`
-
----
-
-## 5. Routes (Controllers)
-
-### 5.1. `routes/auth.js` – Xác thực người dùng
-
-| Method | Endpoint | Auth | Mô tả |
-|---|---|---|---|
-| POST | `/api/auth/login` | Public | Đăng nhập, nhận JWT |
-| POST | `/api/auth/register` | Public | Đăng ký tài khoản mới |
-| GET | `/api/auth/me` | 🔐 Token | Lấy thông tin user hiện tại |
-
-**Logic đăng nhập:**
-1. Tìm user theo `username` trong DB
-2. So sánh password với `bcrypt.compare()`
-3. Tạo JWT với payload `{ id, username, role }`, hết hạn sau 24h
-4. Trả về token + thông tin user (đã loại `password_hash`)
-
-### 5.2. `routes/users.js` – Quản lý người dùng (Admin only)
-
-| Method | Endpoint | Mô tả |
-|---|---|---|
-| GET | `/api/users` | Danh sách người dùng |
-| GET | `/api/users/:id` | Chi tiết một người dùng |
-| POST | `/api/users` | Tạo người dùng mới |
-| PUT | `/api/users/:id` | Cập nhật thông tin (dynamic UPDATE) |
-| DELETE | `/api/users/:id` | Xóa người dùng (không thể tự xóa mình) |
-
-**Lưu ý kỹ thuật:** `PUT /api/users/:id` xây dựng câu SQL động, chỉ UPDATE các field được truyền.
-
-### 5.3. `routes/exams.js` – Quản lý bài thi & câu hỏi
-
-| Method | Endpoint | Auth | Mô tả |
-|---|---|---|---|
-| GET | `/api/exams` | 🔐 | Student thấy open/scheduled/completed; Admin thấy tất cả |
-| GET | `/api/exams/:id` | 🔐 | Chi tiết bài thi + toàn bộ câu hỏi + đáp án |
-| POST | `/api/exams` | 👑 Admin | Tạo bài thi (chưa có câu hỏi) |
-| PUT | `/api/exams/:id` | 👑 Admin | Sửa thông tin bài thi |
-| DELETE | `/api/exams/:id` | 👑 Admin | Xóa bài thi |
-| POST | `/api/exams/:examId/questions` | 👑 Admin | Thêm một câu hỏi + đáp án (có transaction) |
-| PUT | `/api/exams/:examId/questions` | 👑 Admin | Thay thế toàn bộ câu hỏi (bulk replace) |
-| DELETE | `/api/exams/:examId/questions/:questionId` | 👑 Admin | Xóa một câu hỏi |
-
-**Lưu ý kỹ thuật:**
-- Các thao tác câu hỏi đều dùng **MSSQL Transaction** để đảm bảo tính nhất quán
-- Sau mỗi thao tác câu hỏi, `question_count` của bảng `exams` được cập nhật tự động
-- `PUT /:examId/questions` xóa toàn bộ câu hỏi cũ trước khi chèn mới (dùng khi import từ CSV)
-
-### 5.4. `routes/results.js` – Kết quả thi
-
-| Method | Endpoint | Auth | Mô tả |
-|---|---|---|---|
-| POST | `/api/results/submit` | 🔐 | Nộp bài: server tự tính điểm |
-| GET | `/api/results/my-results` | 🔐 | Lịch sử thi của bản thân |
-| GET | `/api/results/exam-result/:examId` | 🔐 | Kết quả + chi tiết đáp án đã chọn |
-| GET | `/api/results/exam/:examId` | 👑 Admin | Tất cả kết quả của 1 bài thi |
-| GET | `/api/results` | 👑 Admin | Tất cả kết quả trong hệ thống |
-
-**Logic tính điểm khi nộp bài (`POST /submit`):**
-1. Lấy tất cả đáp án đúng của đề thi từ DB (server-side, không tin client)
-2. So sánh `selectedOptionId` của sinh viên với đáp án đúng
-3. Tính điểm: `score = (correctAnswers / totalQuestions) × exam.total_score`
-4. Lưu kết quả vào `exam_results` + từng câu trả lời vào `student_answers` trong 1 transaction
-
----
-
-## 6. Bảo mật
-
-| Kỹ thuật | Áp dụng |
-|---|---|
-| **bcryptjs** (cost 10) | Hash mật khẩu trước khi lưu DB |
-| **JWT** (HS256, 24h) | Xác thực stateless, không lưu session |
-| **Parameterized Query** | Tất cả query dùng `.input()` của mssql → chống SQL Injection |
-| **Role-based Authorization** | Middleware `requireAdmin` bảo vệ các route nhạy cảm |
-| **CORS** | Cho phép frontend khác origin gọi API |
-| **Server-side scoring** | Không tin điểm từ client, server tự tính dựa trên DB |
-
----
-
-## 7. Dependencies
-
-| Package | Phiên bản | Mục đích |
-|---|---|---|
-| `express` | ^5.2.1 | Web framework |
-| `mssql` | ^12.2.0 | Driver kết nối SQL Server |
-| `jsonwebtoken` | ^9.0.3 | Tạo & xác thực JWT |
-| `bcryptjs` | ^3.0.3 | Hash mật khẩu |
-| `cors` | ^2.8.6 | Cho phép cross-origin request |
-| `dotenv` | ^17.3.1 | Đọc biến môi trường từ `.env` |
-| `nodemon` (dev) | ^3.1.14 | Tự restart server khi thay đổi code |
+| `spring-boot-starter-web` | REST API (Spring MVC) |
+| `spring-boot-starter-security` | Spring Security 6 |
+| `spring-boot-starter-data-jpa` | JPA / Hibernate ORM |
+| `spring-boot-starter-validation` | Jakarta Bean Validation |
+| `spring-boot-starter-actuator` | Health check & metrics |
+| `postgresql` | PostgreSQL JDBC driver |
+| `flyway-core` | Database migration |
+| `jjwt-api` + `jjwt-impl` | JWT (JJWT library) |
+| `springdoc-openapi-starter-webmvc-ui` | Swagger UI / OpenAPI 3 |
+| `spring-boot-starter-data-redis` | Redis cache (tùy chọn) |
+| `lombok` | Giảm boilerplate (getter/setter) |

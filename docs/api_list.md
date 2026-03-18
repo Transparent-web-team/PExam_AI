@@ -1,8 +1,8 @@
-# Danh sách API – Hệ thống Thi Trắc Nghiệm PExam
+# BÁO CÁO THIẾT KẾ API – Hệ thống PExam (Spring Boot)
 
-> **Stack:** Node.js · Express.js · MSSQL (SQL Server)  
-> **Base URL:** `http://localhost:5000`  
-> **Auth:** JWT Bearer Token — `Authorization: Bearer <token>`
+> **Stack:** Spring Boot 3.x · Spring Security 6 + JWT · PostgreSQL · Flyway · OpenAPI 3 / Swagger UI  
+> **Base URL:** `http://localhost:8080/api/v1`  
+> **Auth:** JWT Bearer — `Authorization: Bearer <accessToken>`
 
 ---
 
@@ -11,612 +11,654 @@
 | Ký hiệu | Ý nghĩa |
 |---|---|
 | 🔓 | Public – không cần token |
-| 🔐 | Cần xác thực (Admin hoặc Student) |
-| 👑 | Chỉ Admin mới được gọi |
+| 🔐 | Cần xác thực (bất kỳ role) |
+| 👨‍🎓 | Student only |
+| 👨‍🏫 | Teacher hoặc Admin |
+| 👑 | Admin only |
 
-### Cấu trúc Response lỗi chuẩn
+### Cấu trúc Response chuẩn
 ```json
-{ "message": "Mô tả lỗi" }
+{
+  "success": true | false,
+  "data": { ... },
+  "message": "Mô tả kết quả"
+}
+```
+
+### Cấu trúc Pagination chuẩn
+```json
+"pagination": {
+  "page": 1, "size": 20,
+  "total": 120, "totalPages": 6
+}
 ```
 
 ---
 
-## 1. Auth – `/api/auth`
+## 1. Xác Thực & Tài Khoản `/auth`, `/me`
 
-### `POST /api/auth/login` 🔓
-Đăng nhập, nhận JWT token.
+### `POST /auth/register` 🔓
+Sinh viên tự đăng ký tài khoản.
 
-**Request Body:**
+**Input:**
+```json
+{ "email": "sv01@edu.vn", "password": "Secret123!", "fullName": "Nguyen Van A" }
+```
+**Output 201:**
 ```json
 {
-  "username": "admin",
-  "password": "123456"
+  "success": true,
+  "data": { "userId": "uuid", "email": "sv01@edu.vn", "role": "STUDENT" },
+  "message": "Đăng ký thành công"
 }
 ```
-
-**Response 200:**
-```json
-{
-  "message": "Login successful",
-  "token": "eyJhbGciOiJIUzI1NiIs...",
-  "user": {
-    "id": 1,
-    "username": "admin",
-    "name": "Quản trị viên",
-    "email": "admin@ptit.edu.vn",
-    "student_id": null,
-    "role": "admin",
-    "class_name": null,
-    "avatar": "AD"
-  }
-}
-```
-
-**Errors:** `400 Bad Request` (thiếu field) · `401 Unauthorized` (sai user/pass) · `500`
+**Errors:** `400` email tồn tại · `422` dữ liệu không hợp lệ
 
 ---
 
-### `POST /api/auth/register` 🔓
-Đăng ký tài khoản mới (dùng trong quá trình dev/test).
+### `POST /auth/login` 🔓
+Đăng nhập, nhận accessToken + refreshToken.
 
-**Request Body:**
+**Input:**
+```json
+{ "email": "admin@edu.vn", "password": "Secret123!" }
+```
+**Output 200:**
 ```json
 {
-  "username": "sv001",
-  "password": "123456",
-  "name": "Nguyễn Văn A",
-  "email": "sv001@ptit.edu.vn",
-  "role": "student"
-}
-```
-
-**Response 201:**
-```json
-{ "id": 5, "message": "User registered successfully" }
-```
-
-**Errors:** `400` (thiếu field / trùng username) · `500`
-
----
-
-### `GET /api/auth/me` 🔐
-Lấy thông tin người dùng hiện tại từ JWT token.
-
-**Headers:** `Authorization: Bearer <token>`
-
-**Response 200:**
-```json
-{
-  "user": {
-    "id": 2,
-    "username": "sv001",
-    "name": "Nguyễn Văn A",
-    "email": "sv001@ptit.edu.vn",
-    "student_id": "B21DCCN001",
-    "role": "student",
-    "class_name": "D21CQCN01-B",
-    "avatar": "NA"
-  }
-}
-```
-
-**Errors:** `401 Unauthorized` · `404 Not Found` · `500`
-
----
-
-## 2. Users – `/api/users` 👑
-
-> Tất cả route trong nhóm này yêu cầu token **Admin**.
-
-### `GET /api/users` 👑
-Lấy danh sách toàn bộ người dùng.
-
-**Response 200:**
-```json
-[
-  {
-    "id": 1,
-    "username": "admin",
-    "name": "Quản trị viên",
-    "email": "admin@ptit.edu.vn",
-    "student_id": null,
-    "role": "admin",
-    "class_name": null,
-    "avatar": "AD"
+  "success": true,
+  "data": {
+    "accessToken": "eyJ...",
+    "refreshToken": "eyJ...",
+    "expiresIn": 3600,
+    "user": { "id": "uuid", "email": "admin@edu.vn", "fullName": "Admin User", "role": "ADMIN" }
   },
-  {
-    "id": 2,
-    "username": "sv001",
-    "name": "Nguyễn Văn A",
-    "email": "sv001@ptit.edu.vn",
-    "student_id": "B21DCCN001",
-    "role": "student",
-    "class_name": "D21CQCN01-B",
-    "avatar": "NA"
+  "message": "Đăng nhập thành công"
+}
+```
+**Errors:** `401` sai mật khẩu · `404` email không tồn tại
+
+---
+
+### `POST /auth/refresh` 🔓
+Làm mới accessToken mà không cần đăng nhập lại.
+
+**Input:** `{ "refreshToken": "eyJ..." }`
+
+**Output 200:**
+```json
+{ "success": true, "data": { "accessToken": "eyJ...", "expiresIn": 3600 } }
+```
+**Errors:** `401` refresh token không hợp lệ
+
+---
+
+### `POST /auth/logout` 🔐
+Vô hiệu hóa refresh token.
+
+**Input:** `{ "refreshToken": "eyJ..." }`
+
+**Output 200:** `{ "success": true, "data": { "loggedOut": true }, "message": "Đã đăng xuất" }`
+
+---
+
+### `GET /me` 🔐
+Lấy thông tin người dùng hiện tại.
+
+**Output 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid", "email": "sv01@edu.vn", "fullName": "Nguyen Van A",
+    "role": "STUDENT", "createdAt": "2026-03-10T00:00:00Z", "lastLoginAt": "2026-03-13T08:30:00Z"
   }
-]
-```
-
----
-
-### `GET /api/users/:id` 👑
-Lấy thông tin một người dùng cụ thể.
-
-**Path Param:** `id` — ID số nguyên của user
-
-**Response 200:**
-```json
-{
-  "id": 2,
-  "username": "sv001",
-  "name": "Nguyễn Văn A",
-  "email": "sv001@ptit.edu.vn",
-  "student_id": "B21DCCN001",
-  "role": "student",
-  "class_name": "D21CQCN01-B",
-  "avatar": "NA"
 }
 ```
 
-**Errors:** `404 Not Found` · `500`
+---
+
+### `PUT /me/password` 🔐
+Đổi mật khẩu (yêu cầu mật khẩu cũ).
+
+**Input:** `{ "oldPassword": "Secret123!", "newPassword": "NewSecret123!" }`
+
+**Output 200:** `{ "success": true, "data": { "changed": true }, "message": "Mật khẩu đã được thay đổi" }`
+
+**Errors:** `400` mật khẩu cũ sai · `422` mật khẩu mới không đủ mạnh
 
 ---
 
-### `POST /api/users` 👑
-Tạo người dùng mới (Admin tạo thay).
+## 2. Quản Trị Người Dùng `/admin/users` 👑
 
-**Request Body:**
+### `GET /admin/users` 👑
+Danh sách user, lọc theo role/keyword, phân trang.
+
+**Query:** `?keyword=nguyen&role=STUDENT&page=1&size=20`
+
+**Output 200:**
 ```json
 {
-  "username": "sv002",
-  "password": "123456",
-  "name": "Trần Thị B",
-  "email": "sv002@ptit.edu.vn",
-  "studentId": "B21DCCN002",
-  "role": "student",
-  "className": "D21CQCN01-B",
-  "avatar": "TB"
-}
-```
-
-**Response 201:**
-```json
-{ "id": 6, "message": "User created successfully" }
-```
-
-**Errors:** `400` (thiếu field / trùng username/email/studentId) · `500`
-
----
-
-### `PUT /api/users/:id` 👑
-Cập nhật thông tin người dùng. Chỉ gửi các field cần thay đổi.
-
-**Path Param:** `id`
-
-**Request Body** _(tất cả optional)_:
-```json
-{
-  "name": "Trần Thị B (updated)",
-  "email": "sv002_new@ptit.edu.vn",
-  "password": "newpass123",
-  "studentId": "B21DCCN002",
-  "role": "student",
-  "className": "D21CQCN02-B",
-  "avatar": "TB"
-}
-```
-
-**Response 200:**
-```json
-{ "message": "User updated successfully" }
-```
-
-**Errors:** `404 Not Found` · `500`
-
----
-
-### `DELETE /api/users/:id` 👑
-Xóa người dùng. Không thể tự xóa chính mình.
-
-**Path Param:** `id`
-
-**Response 200:**
-```json
-{ "message": "User deleted successfully" }
-```
-
-**Errors:** `400` (xóa chính mình) · `500`
-
----
-
-## 3. Exams – `/api/exams` 🔐
-
-### `GET /api/exams` 🔐
-Lấy danh sách bài thi.
-
-- **Admin:** Trả về tất cả bài thi (mọi trạng thái)
-- **Student:** Chỉ thấy bài thi có status `open`, `scheduled`, `completed`
-
-**Response 200:**
-```json
-[
-  {
-    "id": 1,
-    "title": "Lập trình OOP – Giữa kỳ",
-    "subject": "OOP",
-    "description": "Bài thi giữa kỳ môn Lập trình Hướng đối tượng",
-    "type": "midterm",
-    "status": "open",
-    "duration": 60,
-    "question_count": 30,
-    "total_score": 10.0,
-    "passing_score": 5.0,
-    "start_time": "2026-03-15T08:00:00.000Z",
-    "end_time": "2026-03-15T10:00:00.000Z",
-    "allow_retake": false,
-    "created_by": 1,
-    "created_at": "2026-03-10T14:00:00.000Z"
+  "success": true,
+  "data": {
+    "items": [
+      { "id": "uuid", "email": "sv01@edu.vn", "fullName": "Nguyen Van A",
+        "role": "STUDENT", "status": "ACTIVE", "createdAt": "2026-03-10T00:00:00Z" }
+    ],
+    "pagination": { "page": 1, "size": 20, "total": 120, "totalPages": 6 }
   }
-]
-```
-
----
-
-### `GET /api/exams/:id` 🔐
-Lấy chi tiết một bài thi kèm toàn bộ câu hỏi và đáp án.
-
-**Path Param:** `id`
-
-**Response 200:**
-```json
-{
-  "id": 1,
-  "title": "Lập trình OOP – Giữa kỳ",
-  "subject": "OOP",
-  "duration": 60,
-  "question_count": 2,
-  "total_score": 10.0,
-  "questions": [
-    {
-      "id": 101,
-      "exam_id": 1,
-      "content": "Tính đóng gói trong OOP là gì?",
-      "explanation": "Encapsulation là che giấu dữ liệu nội bộ...",
-      "options": [
-        { "id": 401, "question_id": 101, "content": "Che giấu dữ liệu", "display_order": 0, "is_correct": true },
-        { "id": 402, "question_id": 101, "content": "Kế thừa thuộc tính", "display_order": 1, "is_correct": false },
-        { "id": 403, "question_id": 101, "content": "Đa hình", "display_order": 2, "is_correct": false },
-        { "id": 404, "question_id": 101, "content": "Trừu tượng hóa", "display_order": 3, "is_correct": false }
-      ]
-    }
-  ]
 }
 ```
 
-**Errors:** `404 Not Found` · `500`
+---
+
+### `POST /admin/users` 👑
+Admin tạo tài khoản cho sinh viên/giáo viên.
+
+**Input:**
+```json
+{ "email": "gv01@edu.vn", "password": "Secret123!", "fullName": "Teacher B", "role": "TEACHER" }
+```
+**Output 201:** `{ "success": true, "data": { "id": "uuid", "email": "gv01@edu.vn", "fullName": "Teacher B", "role": "TEACHER", "status": "ACTIVE" }, "message": "Tài khoản đã được tạo" }`
 
 ---
 
-### `POST /api/exams` 👑
-Tạo bài thi mới (chưa có câu hỏi).
+### `PATCH /admin/users/{id}/status` 👑
+Khóa (LOCKED) hoặc mở (ACTIVE) tài khoản.
 
-**Request Body:**
+**Input:** `{ "status": "LOCKED" }`
+
+**Output 200:** `{ "success": true, "data": { "id": "uuid", "status": "LOCKED" }, "message": "Trạng thái tài khoản đã được cập nhật" }`
+
+---
+
+## 3. Môn Học `/subjects`
+
+### `GET /subjects` 🔐
+Danh sách tất cả môn học.
+
+**Output 200:**
 ```json
 {
-  "title": "Lập trình OOP – Cuối kỳ",
-  "subject": "OOP",
-  "description": "Bài thi cuối kỳ",
-  "type": "final",
-  "status": "draft",
-  "duration": 90,
-  "questionCount": 0,
-  "totalScore": 10,
-  "passingScore": 5,
-  "startTime": "2026-05-10T08:00:00",
-  "endTime": "2026-05-10T10:30:00",
-  "allowRetake": false
-}
-```
-
-| Field | Type | Required | Mô tả |
-|---|---|---|---|
-| `title` | string | ✅ | Tên bài thi |
-| `subject` | string | ✅ | Môn học |
-| `description` | string | ❌ | Mô tả |
-| `type` | string | ❌ | `practice`/`midterm`/`final` (default: `practice`) |
-| `status` | string | ❌ | `draft`/`scheduled`/`open`/`completed` (default: `draft`) |
-| `duration` | int | ❌ | Phút (default: 60) |
-| `totalScore` | number | ❌ | (default: 10) |
-| `passingScore` | number | ❌ | (default: 5) |
-| `startTime` | datetime | ❌ | ISO 8601 |
-| `endTime` | datetime | ❌ | ISO 8601 |
-| `allowRetake` | boolean | ❌ | (default: false) |
-
-**Response 201:**
-```json
-{ "id": 3, "message": "Exam created successfully" }
-```
-
----
-
-### `PUT /api/exams/:id` 👑
-Cập nhật thông tin bài thi.
-
-**Path Param:** `id`
-
-**Request Body** _(tương tự POST, tất cả optional)_:
-```json
-{
-  "status": "open",
-  "startTime": "2026-05-10T08:00:00"
-}
-```
-
-**Response 200:**
-```json
-{ "message": "Exam updated successfully" }
-```
-
----
-
-### `DELETE /api/exams/:id` 👑
-Xóa bài thi.
-
-**Response 200:**
-```json
-{ "message": "Exam deleted successfully" }
-```
-
----
-
-### `POST /api/exams/:examId/questions` 👑
-Thêm một câu hỏi (kèm đáp án) vào bài thi.
-
-**Path Param:** `examId`
-
-**Request Body:**
-```json
-{
-  "content": "Abstract class khác interface ở điểm nào?",
-  "explanation": "Abstract class có thể có phương thức có thân hàm, còn interface thì không (trước Java 8).",
-  "options": [
-    { "content": "Abstract class có thể có constructor", "is_correct": false, "display_order": 0 },
-    { "content": "Abstract class có thể có phương thức có thân hàm", "is_correct": true, "display_order": 1 },
-    { "content": "Interface cho phép đa kế thừa", "is_correct": false, "display_order": 2 },
-    { "content": "Abstract class không có thuộc tính", "is_correct": false, "display_order": 3 }
-  ]
-}
-```
-
-**Response 201:**
-```json
-{ "id": 105, "message": "Question added successfully" }
-```
-
----
-
-### `PUT /api/exams/:examId/questions` 👑
-**Thay thế toàn bộ** danh sách câu hỏi của bài thi (dùng khi import từ CSV/Excel hoặc lưu hàng loạt từ editor).
-
-**Path Param:** `examId`
-
-**Request Body:** _(mảng câu hỏi)_
-```json
-[
-  {
-    "content": "Câu hỏi 1",
-    "explanation": "Giải thích câu 1",
-    "options": [
-      { "content": "Đáp án A", "is_correct": true, "display_order": 0 },
-      { "content": "Đáp án B", "is_correct": false, "display_order": 1 },
-      { "content": "Đáp án C", "is_correct": false, "display_order": 2 },
-      { "content": "Đáp án D", "is_correct": false, "display_order": 3 }
+  "success": true,
+  "data": {
+    "items": [
+      { "id": "uuid", "code": "MATH", "name": "Toán" },
+      { "id": "uuid", "code": "ENG", "name": "Tiếng Anh" }
     ]
   }
-]
-```
-
-**Response 200:**
-```json
-{ "message": "Questions updated successfully" }
+}
 ```
 
 ---
 
-### `DELETE /api/exams/:examId/questions/:questionId` 👑
-Xóa một câu hỏi khỏi bài thi.
+### `POST /subjects` 👑
+**Input:** `{ "code": "MATH", "name": "Toán" }`
 
-**Response 200:**
-```json
-{ "message": "Question deleted successfully" }
-```
+**Output 201:** `{ "success": true, "data": { "id": "uuid", "code": "MATH", "name": "Toán" }, "message": "Môn học đã được tạo" }`
+
+**Errors:** `400` code trùng · `403`
 
 ---
 
-## 4. Results – `/api/results` 🔐
+### `PUT /subjects/{id}` 👑
+**Input:** `{ "code": "MATH", "name": "Toán Cao Cấp" }`
 
-### `POST /api/results/submit` 🔐
-Nộp bài thi. Server sẽ tự tính điểm.
+**Output 200:** `{ "success": true, "data": { "id": "uuid", "code": "MATH", "name": "Toán Cao Cấp" }, "message": "Môn học đã được cập nhật" }`
 
-**Request Body:**
+---
+
+### `DELETE /subjects/{id}` 👑
+**Output 200:** `{ "success": true, "data": { "deleted": true }, "message": "Môn học đã được xóa" }`
+
+**Errors:** `404` · `409` có câu hỏi liên kết
+
+---
+
+## 4. Ngân Hàng Câu Hỏi `/questions`
+
+### `POST /questions` 👨‍🏫
+Tạo câu hỏi trắc nghiệm (hỗ trợ nhiều đáp án đúng).
+
+**Input:**
 ```json
 {
-  "examId": 1,
-  "duration": 2340,
-  "answers": [
-    { "questionId": 101, "selectedOptionId": 401 },
-    { "questionId": 102, "selectedOptionId": 405 },
-    { "questionId": 103, "selectedOptionId": null }
+  "subjectId": "uuid",
+  "content": "1 + 1 = ?",
+  "level": "EASY",
+  "options": [
+    { "key": "A", "text": "1" }, { "key": "B", "text": "2" },
+    { "key": "C", "text": "3" }, { "key": "D", "text": "4" }
+  ],
+  "correctKeys": ["B"],
+  "explanation": "1 + 1 = 2 (phép cộng cơ bản)",
+  "tags": ["basic", "arithmetic"]
+}
+```
+**Output 201:** `{ "success": true, "data": { "id": "uuid", "subjectId": "uuid", "content": "1 + 1 = ?", "level": "EASY", "createdAt": "..." }, "message": "Câu hỏi đã được tạo" }`
+
+---
+
+### `PUT /questions/{id}` 👨‍🏫
+Cập nhật câu hỏi. **Input:** tương tự POST.
+
+**Output 200:** `{ "success": true, "data": { "id": "uuid", "updatedAt": "..." }, "message": "Câu hỏi đã được cập nhật" }`
+
+---
+
+### `DELETE /questions/{id}` 👨‍🏫
+Xóa câu hỏi (nếu chưa được dùng trong đề thi nào).
+
+**Output 200:** `{ "success": true, "data": { "deleted": true }, "message": "Câu hỏi đã được xóa" }`
+
+**Errors:** `404` · `409` đã được dùng trong đề
+
+---
+
+### `GET /questions` 👨‍🏫
+Danh sách câu hỏi, lọc theo môn/level, phân trang.
+
+**Query:** `?subjectId=uuid&level=EASY&page=1&size=20`
+
+**Output 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": "uuid", "subjectId": "uuid", "content": "1 + 1 = ?", "level": "EASY",
+        "options": [{"key":"A","text":"1"},{"key":"B","text":"2"},{"key":"C","text":"3"},{"key":"D","text":"4"}],
+        "correctKeys": ["B"], "tags": ["basic"], "createdAt": "..."
+      }
+    ],
+    "pagination": { "page": 1, "size": 20, "total": 150, "totalPages": 8 }
+  }
+}
+```
+
+---
+
+### `POST /questions/import` 👨‍🏫
+Import câu hỏi từ file Excel/CSV.
+
+**Input:** `multipart/form-data` — `file: <file.xlsx>`, `subjectId: uuid`
+
+**Output 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "imported": 100, "failed": 2,
+    "errors": [
+      { "row": 5, "message": "Thiếu nội dung câu hỏi" },
+      { "row": 12, "message": "Số đáp án không hợp lệ" }
+    ]
+  },
+  "message": "Import hoàn tất. 100 thành công, 2 thất bại"
+}
+```
+
+---
+
+## 5. Lớp Học `/classes` 👑
+
+### `POST /classes` 👑
+**Input:** `{ "code": "SE123", "name": "Lớp SE123", "semester": "2025-2026-2" }`
+
+**Output 201:** `{ "success": true, "data": { "id": "uuid", "code": "SE123", "name": "Lớp SE123", "semester": "2025-2026-2", "studentCount": 0 }, "message": "Lớp học đã được tạo" }`
+
+---
+
+### `GET /classes` 👑
+**Query:** `?page=1&size=20`
+
+**Output 200:** Danh sách lớp học kèm `studentCount` và `pagination`.
+
+---
+
+### `POST /classes/{id}/students` 👑
+Thêm 1 hoặc nhiều sinh viên vào lớp.
+
+**Input:** `{ "studentIds": ["uuid1", "uuid2"] }`
+
+**Output 200:** `{ "success": true, "data": { "added": 2, "alreadyExist": 0 }, "message": "Đã thêm 2 sinh viên vào lớp" }`
+
+---
+
+### `DELETE /classes/{id}/students/{studentId}` 👑
+**Output 200:** `{ "success": true, "data": { "removed": true }, "message": "Đã xóa sinh viên khỏi lớp" }`
+
+---
+
+## 6. Đề Thi `/exam-templates`
+
+### `POST /exam-templates` 👨‍🏫
+Tạo đề thi từ ngân hàng câu hỏi.
+
+**Input:**
+```json
+{
+  "title": "Đề thi Toán Kỳ 1",
+  "subjectId": "uuid",
+  "durationMinutes": 45,
+  "shuffleQuestions": true,
+  "shuffleOptions": true,
+  "questions": [
+    { "questionId": "uuid1", "points": 1 },
+    { "questionId": "uuid2", "points": 2 }
   ]
 }
 ```
+**Output 201:** `{ "success": true, "data": { "id": "uuid", "title": "...", "totalQuestions": 2, "totalPoints": 3, "createdAt": "..." }, "message": "Đề thi đã được tạo" }`
 
-| Field | Type | Mô tả |
-|---|---|---|
-| `examId` | int | ID bài thi |
-| `duration` | int | Thời gian làm bài (giây) |
-| `answers` | array | Mảng câu trả lời |
-| `answers[].questionId` | int | ID câu hỏi |
-| `answers[].selectedOptionId` | int/null | ID đáp án đã chọn (null nếu bỏ trống) |
+---
 
-**Response 201:**
+### `GET /exam-templates/{id}` 👨‍🏫
+Chi tiết đề thi kèm danh sách câu hỏi.
+
+**Output 200:** Trả về đầy đủ: `id`, `title`, `subjectName`, `durationMinutes`, `shuffleQuestions`, `shuffleOptions`, `totalQuestions`, `totalPoints`, `questions[]`.
+
+---
+
+### `PUT /exam-templates/{id}` 👨‍🏫
+Cập nhật đề. **Input:** tương tự POST.
+
+---
+
+### `DELETE /exam-templates/{id}` 👨‍🏫
+Xóa đề (nếu chưa tạo kỳ thi từ đề này).
+
+**Errors:** `409` đã có kỳ thi liên kết
+
+---
+
+### `GET /exam-templates` 👨‍🏫
+**Query:** `?subjectId=uuid&page=1&size=20`
+
+**Output 200:** Danh sách đề với `id`, `title`, `subjectName`, `totalQuestions`, `totalPoints`, `createdAt` và `pagination`.
+
+---
+
+## 7. Kỳ Thi `/exam-events`
+
+### `POST /exam-events` 👨‍🏫
+Tạo kỳ thi từ đề, gán cho lớp, đặt lịch.
+
+**Input:**
 ```json
 {
-  "message": "Exam submitted successfully",
-  "result": {
-    "id": 50,
-    "score": 8.33,
-    "correctAnswers": 25,
-    "totalQuestions": 30,
-    "examTotalScore": 10
-  }
+  "templateId": "uuid",
+  "classId": "uuid",
+  "title": "Kỳ thi Toán Giữa Kỳ - Lớp SE123",
+  "startAt": "2026-03-20T08:00:00Z",
+  "endAt": "2026-03-20T09:00:00Z",
+  "attemptLimit": 1,
+  "passScore": 5.0
 }
 ```
-
-**Errors:** `400` (payload không hợp lệ) · `404` (exam không tồn tại) · `500`
-
----
-
-### `GET /api/results/my-results` 🔐
-Lấy lịch sử tất cả bài đã thi của người dùng hiện tại.
-
-**Response 200:**
-```json
-[
-  {
-    "id": 50,
-    "user_id": 2,
-    "exam_id": 1,
-    "score": 8.33,
-    "correct_answers": 25,
-    "total_questions": 30,
-    "duration": 2340,
-    "submit_time": "2026-03-15T09:39:00.000Z",
-    "exam_title": "Lập trình OOP – Giữa kỳ",
-    "subject": "OOP",
-    "exam_total_score": 10.0
-  }
-]
-```
+**Output 201:** `{ "success": true, "data": { "id": "uuid", "title": "...", "status": "SCHEDULED", "startAt": "...", "endAt": "..." }, "message": "Kỳ thi đã được tạo" }`
 
 ---
 
-### `GET /api/results/exam-result/:examId` 🔐
-Lấy kết quả của người dùng hiện tại cho một bài thi cụ thể, kèm chi tiết đáp án đã chọn.
+### `GET /exam-events/{id}` 🔐
+Chi tiết kỳ thi (sinh viên chỉ thấy kỳ thi của lớp mình).
 
-**Path Param:** `examId`
+**Output 200:** Trả về `id`, `title`, `templateId`, `classId`, `className`, `startAt`, `endAt`, `durationMinutes`, `attemptLimit`, `passScore`, `status`, `totalStudents`, `submittedAttempts`.
 
-**Response 200:**
+---
+
+### `GET /exam-events` 🔐
+Danh sách kỳ thi. Sinh viên thấy lớp mình; Admin/Teacher thấy tất cả.
+
+**Query:** `?classId=uuid&status=SCHEDULED&page=1&size=20`
+
+---
+
+## 8. Làm Bài (Attempt) `/exam-events/{eventId}/attempts`, `/attempts`
+
+### `POST /exam-events/{eventId}/attempts` 👨‍🎓
+Sinh viên bắt đầu làm bài (tạo attempt mới).
+
+**Input:** `{ "clientInfo": { "device": "web", "userAgent": "..." } }`
+
+**Output 201:**
 ```json
 {
-  "id": 50,
-  "user_id": 2,
-  "exam_id": 1,
-  "score": 8.33,
-  "correct_answers": 25,
-  "total_questions": 30,
-  "exam_total_score": 10.0,
-  "passing_score": 5.0,
-  "exam_title": "Lập trình OOP – Giữa kỳ",
-  "submit_time": "2026-03-15T09:39:00.000Z",
-  "studentAnswers": [
-    {
-      "question_id": 101,
-      "selected_option_id": 401,
-      "selected_option_order": 0,
-      "question_content": "Tính đóng gói trong OOP là gì?"
+  "success": true,
+  "data": {
+    "attemptId": "uuid",
+    "startedAt": "2026-03-20T08:10:00Z",
+    "expiresAt": "2026-03-20T08:55:00Z",
+    "remainingTime": 2700,
+    "exam": {
+      "eventId": "uuid", "title": "...", "durationMinutes": 45,
+      "totalQuestions": 2, "totalPoints": 3,
+      "questions": [
+        {
+          "questionId": "uuid", "content": "1 + 1 = ?",
+          "options": [{"key":"A","text":"1"},{"key":"B","text":"2"},{"key":"C","text":"3"},{"key":"D","text":"4"}],
+          "points": 1, "order": 1
+        }
+      ]
     }
+  },
+  "message": "Bài thi đã bắt đầu"
+}
+```
+**Errors:** `400` hết thời gian / đã hết lần thi · `403` không phải sinh viên của lớp
+
+---
+
+### `PUT /attempts/{attemptId}/answers` 👨‍🎓
+Lưu đáp án (autosave, gọi liên tục khi làm bài).
+
+**Input:**
+```json
+{
+  "answers": [
+    { "questionId": "uuid1", "selectedKeys": ["B"] },
+    { "questionId": "uuid2", "selectedKeys": ["A", "D"] }
   ]
 }
 ```
+**Output 200:** `{ "success": true, "data": { "saved": true, "savedAt": "...", "remainingTime": 2100 }, "message": "Đáp án đã được lưu" }`
 
-**Errors:** `404 Not Found` · `500`
+**Errors:** `400` attempt hết hạn
 
 ---
 
-### `GET /api/results/exam/:examId` 👑
-Xem tất cả kết quả của một bài thi (dành cho Admin).
+### `POST /attempts/{attemptId}/submit` 👨‍🎓
+Nộp bài (không thể sửa sau đó). Server tự chấm điểm.
 
-**Path Param:** `examId`
+**Input:** `{ "confirm": true }`
 
-**Response 200:**
+**Output 200:**
 ```json
-[
-  {
-    "id": 50,
-    "user_id": 2,
-    "exam_id": 1,
-    "score": 8.33,
-    "correct_answers": 25,
-    "total_questions": 30,
-    "submit_time": "2026-03-15T09:39:00.000Z",
-    "username": "sv001",
-    "name": "Nguyễn Văn A",
-    "student_id": "B21DCCN001",
-    "class_name": "D21CQCN01-B"
-  }
-]
+{
+  "success": true,
+  "data": {
+    "submitted": true, "attemptId": "uuid",
+    "score": 8.5, "totalPoints": 10,
+    "correctCount": 17, "totalQuestions": 20,
+    "passScore": 5.0, "passed": true,
+    "submittedAt": "2026-03-20T08:40:00Z"
+  },
+  "message": "Bài thi đã được nộp. Bạn đã vượt qua (8.5/10)"
+}
 ```
 
 ---
 
-### `GET /api/results` 👑
-Lấy tất cả kết quả thi trong hệ thống (Admin).
+### `GET /attempts/{attemptId}/result` 🔐
+Xem kết quả chi tiết (đáp án đúng/sai, giải thích, điểm từng câu).
 
-**Response 200:**
+**Output 200:**
 ```json
-[
-  {
-    "id": 50,
-    "score": 8.33,
-    "correct_answers": 25,
-    "total_questions": 30,
-    "submit_time": "2026-03-15T09:39:00.000Z",
-    "exam_title": "Lập trình OOP – Giữa kỳ",
-    "subject": "OOP",
-    "username": "sv001",
-    "user_name": "Nguyễn Văn A"
+{
+  "success": true,
+  "data": {
+    "attemptId": "uuid", "eventTitle": "...",
+    "score": 8.5, "totalPoints": 10,
+    "correctCount": 17, "totalQuestions": 20, "passScore": 5.0, "passed": true,
+    "submittedAt": "...",
+    "details": [
+      {
+        "questionId": "uuid", "order": 1, "content": "1 + 1 = ?",
+        "selectedKeys": ["B"], "correctKeys": ["B"],
+        "isCorrect": true, "pointsEarned": 1, "totalPoints": 1,
+        "explanation": "1 + 1 = 2 (phép cộng cơ bản)"
+      }
+    ]
   }
-]
+}
 ```
 
 ---
 
-## 5. Bảng tổng hợp API
+### `GET /me/exam-attempts` 👨‍🎓
+Lịch sử thi của sinh viên hiện tại.
+
+**Query:** `?page=1&size=10`
+
+**Output 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      { "attemptId": "uuid", "eventTitle": "...", "score": 8.5, "totalPoints": 10, "passed": true, "submittedAt": "..." }
+    ],
+    "pagination": { "page": 1, "size": 10, "total": 5, "totalPages": 1 }
+  }
+}
+```
+
+---
+
+## 9. Báo Cáo & Thống Kê `/exam-events/{eventId}/...`
+
+### `GET /exam-events/{eventId}/gradebook` 👨‍🏫
+Bảng điểm theo kỳ thi (phân trang, có thể sort).
+
+**Query:** `?page=1&size=20&sortBy=score&sortOrder=desc`
+
+**Output 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "eventId": "uuid", "eventTitle": "...",
+    "totalStudents": 35, "submitted": 34, "notSubmitted": 1,
+    "avgScore": 7.2, "passRate": 0.97,
+    "items": [
+      { "studentId": "uuid", "studentName": "Nguyen Van A", "email": "sv01@edu.vn",
+        "score": 9.5, "totalPoints": 10, "correctCount": 19, "totalQuestions": 20,
+        "passed": true, "submittedAt": "..." }
+    ],
+    "pagination": { "page": 1, "size": 20, "total": 34, "totalPages": 2 }
+  }
+}
+```
+
+---
+
+### `GET /exam-events/{eventId}/question-stats` 👨‍🏫
+Thống kê độ khó và tỉ lệ trả lời đúng từng câu hỏi.
+
+**Output 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "eventId": "uuid", "totalAttempts": 34,
+    "items": [
+      {
+        "questionId": "uuid", "order": 1, "content": "1 + 1 = ?", "level": "EASY",
+        "correctRate": 0.97, "attemptCount": 34, "correctCount": 33,
+        "optionPickRate": { "A": 0.03, "B": 0.97, "C": 0.0, "D": 0.0 }
+      }
+    ]
+  }
+}
+```
+
+---
+
+## 10. Hệ Thống `/system`
+
+### `GET /system/health` 🔓
+Health check (dùng cho monitoring/Spring Boot Actuator).
+
+**Output 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "status": "UP", "timestamp": "2026-03-13T12:00:00Z",
+    "components": { "database": "UP", "redis": "UP", "memory": "UP" }
+  }
+}
+```
+
+---
+
+## Bảng Tổng Hợp API
 
 | # | Method | Endpoint | Auth | Mô tả |
 |---|---|---|---|---|
-| 1 | POST | `/api/auth/login` | 🔓 | Đăng nhập |
-| 2 | POST | `/api/auth/register` | 🔓 | Đăng ký tài khoản |
-| 3 | GET | `/api/auth/me` | 🔐 | Lấy thông tin bản thân |
-| 4 | GET | `/api/users` | 👑 | Danh sách người dùng |
-| 5 | GET | `/api/users/:id` | 👑 | Chi tiết người dùng |
-| 6 | POST | `/api/users` | 👑 | Tạo người dùng |
-| 7 | PUT | `/api/users/:id` | 👑 | Sửa người dùng |
-| 8 | DELETE | `/api/users/:id` | 👑 | Xóa người dùng |
-| 9 | GET | `/api/exams` | 🔐 | Danh sách bài thi |
-| 10 | GET | `/api/exams/:id` | 🔐 | Chi tiết bài thi + câu hỏi |
-| 11 | POST | `/api/exams` | 👑 | Tạo bài thi |
-| 12 | PUT | `/api/exams/:id` | 👑 | Sửa bài thi |
-| 13 | DELETE | `/api/exams/:id` | 👑 | Xóa bài thi |
-| 14 | POST | `/api/exams/:examId/questions` | 👑 | Thêm câu hỏi |
-| 15 | PUT | `/api/exams/:examId/questions` | 👑 | Thay thế toàn bộ câu hỏi |
-| 16 | DELETE | `/api/exams/:examId/questions/:questionId` | 👑 | Xóa câu hỏi |
-| 17 | POST | `/api/results/submit` | 🔐 | Nộp bài thi |
-| 18 | GET | `/api/results/my-results` | 🔐 | Lịch sử thi của mình |
-| 19 | GET | `/api/results/exam-result/:examId` | 🔐 | Kết quả chi tiết theo bài |
-| 20 | GET | `/api/results/exam/:examId` | 👑 | Tất cả kết quả 1 bài thi |
-| 21 | GET | `/api/results` | 👑 | Tất cả kết quả hệ thống |
+| 1 | POST | `/auth/register` | 🔓 | Đăng ký tài khoản |
+| 2 | POST | `/auth/login` | 🔓 | Đăng nhập |
+| 3 | POST | `/auth/refresh` | 🔓 | Làm mới token |
+| 4 | POST | `/auth/logout` | 🔐 | Đăng xuất |
+| 5 | GET | `/me` | 🔐 | Xem profile |
+| 6 | PUT | `/me/password` | 🔐 | Đổi mật khẩu |
+| 7 | GET | `/admin/users` | 👑 | Danh sách user |
+| 8 | POST | `/admin/users` | 👑 | Tạo user |
+| 9 | PATCH | `/admin/users/{id}/status` | 👑 | Khóa/mở tài khoản |
+| 10 | GET | `/subjects` | 🔐 | Danh sách môn học |
+| 11 | POST | `/subjects` | 👑 | Tạo môn học |
+| 12 | PUT | `/subjects/{id}` | 👑 | Sửa môn học |
+| 13 | DELETE | `/subjects/{id}` | 👑 | Xóa môn học |
+| 14 | GET | `/questions` | 👨‍🏫 | Danh sách câu hỏi |
+| 15 | POST | `/questions` | 👨‍🏫 | Tạo câu hỏi |
+| 16 | PUT | `/questions/{id}` | 👨‍🏫 | Sửa câu hỏi |
+| 17 | DELETE | `/questions/{id}` | 👨‍🏫 | Xóa câu hỏi |
+| 18 | POST | `/questions/import` | 👨‍🏫 | Import từ Excel/CSV |
+| 19 | POST | `/classes` | 👑 | Tạo lớp |
+| 20 | GET | `/classes` | 👑 | Danh sách lớp |
+| 21 | POST | `/classes/{id}/students` | 👑 | Thêm SV vào lớp |
+| 22 | DELETE | `/classes/{id}/students/{studentId}` | 👑 | Xóa SV khỏi lớp |
+| 23 | POST | `/exam-templates` | 👨‍🏫 | Tạo đề thi |
+| 24 | GET | `/exam-templates` | 👨‍🏫 | Danh sách đề |
+| 25 | GET | `/exam-templates/{id}` | 👨‍🏫 | Chi tiết đề |
+| 26 | PUT | `/exam-templates/{id}` | 👨‍🏫 | Sửa đề |
+| 27 | DELETE | `/exam-templates/{id}` | 👨‍🏫 | Xóa đề |
+| 28 | POST | `/exam-events` | 👨‍🏫 | Tạo kỳ thi |
+| 29 | GET | `/exam-events` | 🔐 | Danh sách kỳ thi |
+| 30 | GET | `/exam-events/{id}` | 🔐 | Chi tiết kỳ thi |
+| 31 | POST | `/exam-events/{eventId}/attempts` | 👨‍🎓 | Bắt đầu làm bài |
+| 32 | PUT | `/attempts/{attemptId}/answers` | 👨‍🎓 | Lưu đáp án (autosave) |
+| 33 | POST | `/attempts/{attemptId}/submit` | 👨‍🎓 | Nộp bài |
+| 34 | GET | `/attempts/{attemptId}/result` | 🔐 | Xem kết quả chi tiết |
+| 35 | GET | `/me/exam-attempts` | 👨‍🎓 | Lịch sử thi của tôi |
+| 36 | GET | `/exam-events/{eventId}/gradebook` | 👨‍🏫 | Bảng điểm kỳ thi |
+| 37 | GET | `/exam-events/{eventId}/question-stats` | 👨‍🏫 | Thống kê câu hỏi |
+| 38 | GET | `/system/health` | 🔓 | Health check |
 
 ---
 
-## 6. API còn thiếu / đề xuất bổ sung
+## Công Nghệ Triển Khai
 
-| API đề xuất | Mục đích |
-|---|---|
-| `GET /api/results/student/:userId` | Admin xem toàn bộ lịch sử thi của 1 sinh viên |
-| `GET /api/exams/stats` | Thống kê tổng quan: số bài thi, sinh viên thi, điểm TB |
-| `POST /api/auth/change-password` | Tự đổi mật khẩu |
-| `GET /api/users/search?q=...` | Tìm kiếm sinh viên theo tên/mã SV |
-| `GET /api/exams/:examId/stats` | Thống kê điểm của 1 bài thi cụ thể |
-| `POST /api/exams/:examId/import` | Import câu hỏi từ file CSV/Excel |
+| Công nghệ | Phiên bản | Mục đích |
+|---|---|---|
+| **Spring Boot** | 3.x | Framework backend chính |
+| **Spring Security 6 + JWT** | 6.x | Xác thực & phân quyền |
+| **Spring Data JPA / Hibernate** | — | ORM – tầng dữ liệu |
+| **PostgreSQL** | 15+ | Cơ sở dữ liệu quan hệ |
+| **Flyway** | — | Database migration (version control schema) |
+| **OpenAPI 3 / Swagger UI** | — | Tự sinh tài liệu API tương tác |
+| **Jakarta Bean Validation** | — | Validate input (`@NotBlank`, `@Email`...) |
+| **Redis** *(tùy chọn)* | — | Cache token blacklist & session |
+| **Docker + Docker Compose** *(tùy chọn)* | — | Container hóa toàn bộ stack |
+| **Spring Boot Actuator** *(tùy chọn)* | — | Health check & monitoring |
