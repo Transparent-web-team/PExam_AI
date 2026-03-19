@@ -2,17 +2,14 @@
 //  PTIT EXAM SYSTEM — UTILITIES
 // ============================================================
 
-// Escape HTML to prevent raw tags in option text from creating real elements
-function escHtml(str) {
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-}
-
-
 const Utils = {
+    esc(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    },
     // ── Timer ──────────────────────────────────────────────────
     startTimer(totalSeconds, displayEl, onExpire, onTick) {
         let remaining = totalSeconds;

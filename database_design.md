@@ -1,6 +1,8 @@
 # Thiết kế Cơ sở dữ liệu cho Hệ thống Thi Trực tuyến PTIT (PExam)
 
-Dựa trên cấu trúc dữ liệu hiện tại trong file `js/data.js` và yêu cầu của dự án, dưới đây là thiết kế Cơ sở dữ liệu quan hệ (RDBMS - có thể áp dụng cho MySQL hoặc PostgreSQL) được chuẩn hóa để đảm bảo tính toàn vẹn dữ liệu, khả năng mở rộng và hiệu suất.
+> **Lưu ý:** Hiện tại dự án đang sử dụng **Spring Boot Mock Backend** không cần một cơ sở dữ liệu thực tế. Tuy nhiên, thiết kế dưới đây là thiết kế Cơ sở dữ liệu quan hệ (RDBMS - có thể áp dụng cho MySQL hoặc PostgreSQL) chuẩn hóa phù hợp nếu bạn muốn triển khai hệ thống với hệ quản trị cơ sở dữ liệu thật.
+
+Dựa trên cấu trúc dữ liệu ban đầu trong file `js/data.js` và yêu cầu của dự án, thiết kế dưới đây đảm bảo tính toàn vẹn dữ liệu, khả năng mở rộng và hiệu suất.
 
 ## 1. Sơ đồ thực thể liên kết (ERD)
 

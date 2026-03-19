@@ -1,6 +1,7 @@
 # So sánh: Manual Coding vs Vibe Coding (AI-Assisted)
 ## Bối cảnh: Phát triển Backend PExam (Node.js/Express + MSSQL)
 
+> **Lưu ý:** Bài viết này phản ánh quá trình xây dựng API ban đầu với Node.js. Hiện tại dự án đã chuyển sang sử dụng **Spring Boot Mock Backend** để việc triển khai và kiểm thử dễ dàng hơn (không cần cài đặt database).
 ---
 
 ## 1. Định nghĩa

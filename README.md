@@ -22,41 +22,24 @@ Hệ thống quản lý và tổ chức thi trắc nghiệm trực tuyến đư�
 
 ## Hướng dẫn cài đặt & chạy dự án để test
 
-Hệ thống PExam hiện tại hoạt động theo mô hình Client-Server, bao gồm phần Backend (Node.js + SQL Server) và Frontend (Vanilla JS). Cần chạy cả hai để hệ thống hoạt động đầy đủ.
+Hệ thống PExam hiện tại hoạt động theo mô hình Client-Server, bao gồm phần Backend (Spring Boot) và Frontend (Vanilla JS). Cần chạy cả hai để hệ thống hoạt động đầy đủ.
 
-### Bước 1: Thiết lập Database (SQL Server)
-1. Cài đặt **SQL Server** và công cụ quản lý **SQL Server Management Studio (SSMS)**.
-2. Tạo một cơ sở dữ liệu có tên là `pexam`.
-3. Kiểm tra thông tin tài khoản SQL Server (VD: Username là `sa`, Password là `123456`) để điền vào phần Backend ở bước sau.
+### Bước 1: Chạy Backend (Spring Boot API Server)
+Dự án sử dụng Spring Boot làm backend (Mock Data, không cần database).
 
-### Bước 2: Chạy Backend (API Server)
-1. Yêu cầu đã cài đặt **Node.js** trên máy.
-2. Mở Terminal hoặc Command Prompt, di chuyển vào thư mục `backend`:
+1. Yêu cầu đã cài đặt **Java JDK 17** (hoặc mới hơn) trên máy.
+2. Mở Terminal hoặc Command Prompt, di chuyển vào thư mục `backend-spring`:
    ```bash
-   cd backend
+   cd backend-spring
    ```
-3. Cài đặt các thư viện (Dependencies):
+3. Chạy lệnh sau để khởi động server Backend:
    ```bash
-   npm install
+   # Trên Windows:
+   .\mvnw.cmd spring-boot:run
    ```
-4. Cấu hình môi trường (nếu chưa có, tạo file `.env` trong thư mục `backend/` với nội dung sau và thay đổi tài khoản DB cho phù hợp):
-   ```env
-   PORT=5000
-   JWT_SECRET=super_secret_jwt_key_for_pexam_2026
-   DB_USER=sa
-   DB_PASSWORD=123456
-   DB_SERVER=localhost
-   DB_NAME=pexam
-   ```
-5. Bật server Backend:
-   ```bash
-   npm start
-   # Hoặc dùng lệnh sau để tự chạy lại khi có thay đổi code:
-   # npm run dev 
-   ```
-   Nếu thành công, terminal sẽ báo: `Server is running on port 5000` và `Connected to SQL Server`.
+   Nếu thành công, terminal sẽ báo Spring Boot đã khởi động thành công ở cổng `8080`. (Backend API Server chạy ở `http://localhost:8080`)
 
-### Bước 3: Chạy Frontend (Giao diện Web)
+### Bước 2: Chạy Frontend (Giao diện Web)
 Sau khi Backend đã chạy, mở một Terminal mới để chạy Frontend.
 
 **Cách 1: Chạy bằng Visual Studio Code (Live Server)**
@@ -66,11 +49,11 @@ Sau khi Backend đã chạy, mở một Terminal mới để chạy Frontend.
 
 **Cách 2: Chạy bằng Python HTTP Server (Khuyên dùng)**
 1. Mở Terminal mới tại thư mục gốc `PExam/`.
-2. Chạy lệnh sau để tạo server local:
+2. Chạy lệnh sau để tạo server local (Sử dụng cổng khác với Spring Boot, ví dụ cổng 8000):
    ```bash
-   python -m http.server 8080
+   python -m http.server 8000
    ```
-3. Mở trình duyệt và truy cập vào: [http://localhost:8080](http://localhost:8080)
+3. Mở trình duyệt và truy cập vào: [http://localhost:8000](http://localhost:8000)
 
 ## Tài khoản Demo
 

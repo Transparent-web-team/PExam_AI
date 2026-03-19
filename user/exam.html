@@ -270,9 +270,10 @@
         </div>
     </div>
 
-    <script src="../js/data.js"></script>
-    <script src="../js/auth.js"></script>
+    <script src="../js/config.js"></script>
     <script src="../js/utils.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/data.js"></script>
     <script>
         const session = Auth.requireAuth('student');
         if (!session) throw new Error();
@@ -349,12 +350,12 @@
         function renderQuestion() {
             const q = questions[currentQ];
             document.getElementById('qNumber').textContent = `Câu ${currentQ + 1}/${questions.length}`;
-            document.getElementById('qText').textContent = q.text;
+            document.getElementById('qText').textContent = Utils.esc(q.text);
             const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
             document.getElementById('optionList').innerHTML = q.options.map((opt, i) =>
                 `<div class="option-item ${answers[currentQ] === i ? 'selected' : ''}" data-idx="${i}">
       <div class="option-letter">${letters[i]}</div>
-      <div class="option-text">${opt}</div>
+      <div class="option-text">${Utils.esc(opt)}</div>
     </div>`
             ).join('');
             document.querySelectorAll('.option-item').forEach(item => {

@@ -1,26 +1,29 @@
 // ============================================================
-//  PTIT EXAM SYSTEM — AUTH (Mock, no backend)
+//  PTIT EXAM SYSTEM — AUTH (Connected to Spring Boot Mock API)
 // ============================================================
+
+// (API_BASE_URL is now defined in config.js)
 
 const Auth = {
     SESSION_KEY: 'ptit_session',
 
     async login(username, password) {
-        const user = DB.users.find(u => u.username === username && u.password === password);
-        if (!user) return { success: false, error: 'Tên đăng nhập hoặc mật khẩu không đúng.' };
-        const session = {
-            userId: user.id,
-            username: user.username,
-            name: user.name,
-            email: user.email || '',
-            role: user.role,
-            avatar: user.avatar || user.name[0],
-            studentId: user.studentId || '',
-            class: user.class || '',
-            class_name: user.class || ''
-        };
-        localStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
-        return { success: true, user: session };
+        try {
+            const res = await fetch(`${API_BASE_URL}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+            if (!res.ok) return { success: false, error: data.message || 'Lỗi đăng nhập' };
+            
+            const session = data.user;
+            session.token = data.token;
+            localStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
+            return { success: true, user: session };
+        } catch (e) {
+            return { success: false, error: 'Không thể kết nối đến máy chủ.' };
+        }
     },
 
     async register(username, email, password, confirmPassword, name) {
@@ -30,16 +33,19 @@ const Auth = {
         if (!name || name.trim().length < 2) return { success: false, error: 'Vui lòng nhập họ và tên (ít nhất 2 ký tự).' };
         if (!password || password.length < 6) return { success: false, error: 'Mật khẩu phải ít nhất 6 ký tự.' };
         if (password !== confirmPassword) return { success: false, error: 'Mật khẩu xác nhận không khớp.' };
-        if (DB.users.find(u => u.username === username)) return { success: false, error: 'Tên đăng nhập đã tồn tại.' };
 
-        const newUser = {
-            id: 'u' + (DB.users.length + 1),
-            username, password, name, email,
-            role: 'student',
-            avatar: name.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase()
-        };
-        DB.users.push(newUser);
-        return this.login(username, password);
+        try {
+            const res = await fetch(`${API_BASE_URL}/auth/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, email, password, name, role: 'student' })
+            });
+            const data = await res.json();
+            if (!res.ok) return { success: false, error: data.message || 'Lỗi đăng ký' };
+            return this.login(username, password);
+        } catch (e) {
+            return { success: false, error: 'Không thể kết nối đến máy chủ.' };
+        }
     },
 
     logout() {
@@ -52,7 +58,8 @@ const Auth = {
     },
 
     getToken() {
-        return 'mock-token'; // không dùng thật nữa
+        const s = this.getSession();
+        return s ? s.token : null;
     },
 
     requireAuth(role) {
@@ -67,7 +74,11 @@ const Auth = {
     },
 
     fetchWithAuth(url, options = {}) {
-        // kept for compatibility — no-op in mock mode
-        return Promise.resolve({ ok: false });
+        const token = this.getToken();
+        const headers = { ...options.headers };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        return fetch(url, { ...options, headers });
     }
 };

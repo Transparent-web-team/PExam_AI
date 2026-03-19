@@ -1,0 +1,21 @@
+server:
+  port: 8080
+
+jwt:
+  secret: "pexam-ptit-super-secret-key-do-not-share-2026-spring-boot-mock"
+  expiration-ms: 86400000  # 24 hours
+
+spring:
+  security:
+    user:
+      name: disable
+  mvc:
+    pathmatch:
+      use-suffix-pattern: false
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    try-it-out-enabled: true
